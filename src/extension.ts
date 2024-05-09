@@ -14,6 +14,20 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fhir-terminology-generator-vscode.start', () => {
+
+			// ???
+			const activeTextEditor = vscode.window.activeTextEditor;
+			if (activeTextEditor) {
+				const documentText = activeTextEditor.document.getText();
+				if (isCSV(documentText)) {
+					vscode.window.setStatusBarMessage('Documento CSV aberto.');
+				} else {
+					vscode.window.setStatusBarMessage('Documento não é um CSV.');
+				}
+			} else {
+				vscode.window.setStatusBarMessage('Nenhum documento aberto.');
+			}
+
 			const columnToShowIn = vscode.window.activeTextEditor
 				? vscode.window.activeTextEditor.viewColumn
 				: undefined;
@@ -67,3 +81,9 @@ function getWebviewContent() {
   </body>
   </html>`;
   }
+
+function isCSV(text: string) {
+
+	const csvRegex = /^(\s*(?:[-\w.,$]+)\s*(?:,|\t|;)*){2,}$/;
+	return csvRegex.test(text);
+}
