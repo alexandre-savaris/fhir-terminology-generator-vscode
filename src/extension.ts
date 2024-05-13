@@ -18,19 +18,20 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fhir-terminology-generator-vscode.start', () => {
 
-			// ???
+			// Parse the CSV content from the opened document (if any).
 			const activeTextEditor = vscode.window.activeTextEditor;
 			if (activeTextEditor) {
 				const documentText = activeTextEditor.document.getText();
 
 				const stream = csv.parse({ delimiter: ';', headers: true })
-					.on('error', error => vscode.window.setStatusBarMessage(error.message))
+					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
 					.on('data', row => vscode.window.setStatusBarMessage(row))
-					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows`));
+					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
 				stream.write(documentText);
 				stream.end();
 			} else {
-				vscode.window.setStatusBarMessage('Nenhum documento aberto.');
+				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
+				return;
 			}
 
 			const columnToShowIn = vscode.window.activeTextEditor
@@ -53,7 +54,22 @@ export function activate(context: vscode.ExtensionContext) {
 					} // Webview options.
 				);
 
+				// Load the HTML into the webview.
 				currentPanel.webview.html = getWebviewContent(context);
+
+				// Handle messages from the webview.
+				currentPanel.webview.onDidReceiveMessage(
+					message => {
+						switch (message.command) {
+							case 'formData':
+								vscode.window.setStatusBarMessage(message.text);
+								return;
+							}
+					},
+					undefined,
+					context.subscriptions
+				);				
+
 				// Reset when the current panel is closed.
 				currentPanel.onDidDispose(
 					() => {
@@ -96,7 +112,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					font-family: sans-serif;
 				}
 				/*
-				#formulario {
+				#fhirTerminologyForm {
 					display: flex;
 					flex-direction: column;
 					align-items: center;
@@ -138,7 +154,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 		</head>
 		<body>
 			<h1>FHIR® Terminology Generator</h1>
-			<form id="formulario">
+			<form id="fhirTerminologyForm">
 				<label for="fhirRelease">FHIR® release:</label>
 				<div class="radiogroup">
 					<input type="radio" id="r4" name="fhirRelease" value="R4" checked>
@@ -164,8 +180,11 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					<input type="radio" id="unknown" name="status" value="unknown">
 					<label for="unknown">Unknown</label>
 				</div>
+				<div>
+					<p id='test'>aaa</p>
+				</div>
 				<button type="button" id="clearButton">Limpar</button>
-				<button type="submit" id="submitButton">Enviar</button>
+				<input type="button" value="Send" onclick="send();">
 			</form>
 			<!--
 			<script src="script.js"></script>
@@ -173,7 +192,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 			<script>
 				const clearButton = document.getElementById('clearButton');
 				const submitButton = document.getElementById('submitButton');
-				const formulario = document.getElementById('formulario');
+				const fhirTerminologyForm = document.getElementById('fhirTerminologyForm');
 	
 				clearButton.addEventListener('click', () => {
 				const radios = document.querySelectorAll('.radiogroup input[type="radio"]');
@@ -191,6 +210,28 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					return;
 				}
 				});
+
+				// ???
+				function send() {
+					const vscode = acquireVsCodeApi();
+
+					let form = document.getElementById("fhirTerminologyForm");
+					let formData = {};
+					for (let i = 0; i < form.elements.length; i++) {
+						let element = form.elements[i];
+						//if (element.type !== "submit") {
+							formData[element.name] = element.value;
+						//}
+					}
+					let jsonData = JSON.stringify(formData);
+					const test = document.getElementById("test");
+					test.innerHTML = jsonData; 
+
+					vscode.postMessage({
+                        command: 'formData',
+                        text: jsonData
+                    })
+				}
 			</script>
 		</body>
 	</html>	`;
