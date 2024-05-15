@@ -153,15 +153,8 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 			</style>
 		</head>
 		<body>
-			<h1>FHIR® Terminology Generator</h1>
+			<h1>FHIR® Terminology Generator - R5</h1>
 			<form id="fhirTerminologyForm">
-				<label for="fhirRelease">FHIR® release:</label>
-				<div class="radiogroup">
-					<input type="radio" id="r4" name="fhirRelease" value="R4" checked>
-					<label for="r4">R4</label>
-					<input type="radio" id="r5" name="fhirRelease" value="R5">
-					<label for="r5">R5</label>
-				</div>
 				<label for="terminologyInstance">Terminology instance type:</label>
 				<div class="radiogroup">
 					<input type="radio" id="codesystem" name="terminologyInstance" value="CodeSystem" checked>
@@ -169,17 +162,103 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					<input type="radio" id="valueset" name="terminologyInstance" value="ValueSet">
 					<label for="valueset">ValueSet</label>
 				</div>
-				<label for="status">Status:</label>
+				<hr />
+				<label for="url">url (canonical identifier for this instance):</label><br />
+				<input type="text" id="url" name="url" size="100" /><br />
+				<hr />
+				<label for="version">version (business version for this instance):</label><br />
+				<input type="text" id="version" name="version" size="50" /><br />
+				<hr />
+				<label for="name">name (name for this instance (computer friendly)):</label><br />
+				<input type="text" id="name" name="name" size="100" /><br />
+				<hr />
+				<label for="title">title (name for this instance (human friendly)):</label><br />
+				<input type="text" id="title" name="title" size="100" /><br />
+				<hr />
+				<label for="status">status (the status of this instance):</label>
 				<div class="radiogroup">
-					<input type="radio" id="draft" name="status" value="draft" checked>
-					<label for="draft">Draft</label>
-					<input type="radio" id="active" name="status" value="active">
-					<label for="active">Active</label>
-					<input type="radio" id="retired" name="status" value="retired">
-					<label for="retired">Retired</label>
-					<input type="radio" id="unknown" name="status" value="unknown">
-					<label for="unknown">Unknown</label>
+					<input type="radio" id="statusDraft" name="status" value="draft" checked>
+					<label for="statusDraft">draft</label>
+					<input type="radio" id="statusActive" name="status" value="active">
+					<label for="statusActive">active</label>
+					<input type="radio" id="statusRetired" name="status" value="retired">
+					<label for="statusRetired">retired</label>
+					<input type="radio" id="statusUnknown" name="status" value="unknown">
+					<label for="statusUnknown">unknown</label>
 				</div>
+				<hr />
+				<label for="experimental">experimental (for testing purposes, not real usage):</label>
+				<div class="radiogroup">
+					<input type="radio" id="experimentalTrue" name="experimental" value="true">
+					<label for="experimentalTrue">true</label>
+					<input type="radio" id="experimentalFalse" name="experimental" value="false">
+					<label for="experimentalFalse">false</label>
+					<button type="button" id="clearExperimental">Clear</button>
+				</div>
+				<hr />
+				<!-- TODO: regexp -->
+				<label for="date">date (date of the last change (in the format YYYY, YYYY-MM, YYYY-MM-DD or YYYY-MM-DDThh:mm:ss+zz:zz)):</label><br />
+				<input type="text" id="date" name="date" size="50" /><br />
+				<hr />
+				<label for="publisher">publisher (name of the publisher/steward (organization or individual)):</label><br />
+				<input type="text" id="publisher" name="publisher" size="100" /><br />
+				<hr />
+				<label for="description">description (natural language description for the instance):</label><br />
+				<textarea id="description" name="description" rows="3" cols="100"></textarea><br />
+				<hr />
+				<label for="purpose">purpose (why this instance is defined):</label><br />
+				<textarea id="purpose" name="purpose" rows="3" cols="100"></textarea><br />
+				<hr />
+				<label for="copyright">copyright (use and/or publishing restrictions):</label><br />
+				<textarea id="copyright" name="copyright" rows="3" cols="100"></textarea><br />
+				<hr />
+				<label for="copyrightLabel">copyrightLabel (copyright holder and year(s)):</label><br />
+				<input type="text" id="copyrightLabel" name="copyrightLabel" size="100" /><br />
+				<hr />
+				<!-- TODO: regexp -->
+				<label for="approvalDate">approvalDate (when the instance was approved by publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
+				<input type="text" id="approvalDate" name="approvalDate" size="50" /><br />
+				<hr />
+				<!-- TODO: regexp -->
+				<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
+				<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
+				<hr />
+				<div id="codesystemDiv">
+					<label for="content">content (the extent of the content of the instance):</label>
+					<div class="radiogroup">
+						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
+						<label for="contentNotPresent">not-present</label>
+						<input type="radio" id="contentExample" name="content" value="example">
+						<label for="contentExample">example</label>
+						<input type="radio" id="contentFragment" name="content" value="fragment">
+						<label for="contentFragment">fragment</label>
+						<input type="radio" id="contentComplete" name="content" value="complete">
+						<label for="contentComplete">complete</label>
+						<input type="radio" id="contentSupplement" name="content" value="supplement">
+						<label for="contentSupplement">supplement</label>
+					</div>
+					<hr />
+					<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
+					<div class="radiogroup">
+						<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
+						<label for="caseSensitiveTrue">true</label>
+						<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
+						<label for="caseSensitiveFalse">false</label>
+						<button type="button" id="clearCaseSensitive">Clear</button>
+					</div>
+					<hr />
+					<label for="canonicalvalueset">valueSet (canonical reference to the value set with entire code system):</label><br />
+					<input type="text" id="canonicalvalueset" name="canonicalvalueset" size="100" /><br />
+					<hr />
+				</div>
+
+
+
+
+
+
+
+
 				<div>
 					<p id='test'>aaa</p>
 				</div>
@@ -190,6 +269,48 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 			<script src="script.js"></script>
 			-->
 			<script>
+
+				// ???
+				const codesystemRadiobutton = document.getElementById('codesystem');
+				codesystemRadiobutton.addEventListener('click', () => {
+					document.getElementById('codesystemDiv').style.display = "block";
+					//document.getElementById('valuesetDiv').style.display = "none";
+				}
+
+				// ???
+				const valuesetRadiobutton = document.getElementById('valueset');
+				valuesetRadiobutton.addEventListener('click', () => {
+					document.getElementById('codesystemDiv').style.display = "none";
+					//document.getElementById('valuesetDiv').style.display = "block";
+				}
+
+				// Clear the selection for the 'experimental' radiogroup.
+				const clearExperimentalButton = document.getElementById('clearExperimental');
+				clearExperimentalButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('experimental');
+					clearRadiobuttons(radioButtons);
+				});
+
+				// Clear the selection for the 'caseSensitive' radiogroup.
+				const clearCaseSensitiveButton = document.getElementById('clearCaseSensitive');
+				clearCaseSensitiveButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('caseSensitive');
+					clearRadiobuttons(radioButtons);
+				});
+
+				// Clear the selection for a list of radiobuttons.
+				function clearRadiobuttons(radiobuttons) {
+
+					for (const radioButton of radiobuttons) {
+						radioButton.checked = false;
+					}
+				}
+				
+
+
+
+
+
 				const clearButton = document.getElementById('clearButton');
 				const submitButton = document.getElementById('submitButton');
 				const fhirTerminologyForm = document.getElementById('fhirTerminologyForm');
