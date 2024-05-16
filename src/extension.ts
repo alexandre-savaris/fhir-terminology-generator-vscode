@@ -157,10 +157,10 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 			<form id="fhirTerminologyForm">
 				<label for="terminologyInstance">Terminology instance type:</label>
 				<div class="radiogroup">
-					<input type="radio" id="codesystem" name="terminologyInstance" value="CodeSystem" checked>
+					<input type="radio" id="codeSystem" name="terminologyInstance" value="CodeSystem" checked>
 					<label for="codesystem">CodeSystem</label>
-					<input type="radio" id="valueset" name="terminologyInstance" value="ValueSet">
-					<label for="valueset">ValueSet</label>
+					<input type="radio" id="valueSet" name="terminologyInstance" value="ValueSet">
+					<label for="valueSet">ValueSet</label>
 				</div>
 				<hr />
 				<label for="url">url (canonical identifier for this instance):</label><br />
@@ -223,8 +223,8 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 				<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
 				<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
 				<hr />
-				<div id="codesystemDiv">
-					<label for="content">content (the extent of the content of the instance):</label>
+				<div id="codeSystemDiv">
+					<label for="content">content (the extent of the content of the code system):</label>
 					<div class="radiogroup">
 						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
 						<label for="contentNotPresent">not-present</label>
@@ -247,10 +247,59 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 						<button type="button" id="clearCaseSensitive">Clear</button>
 					</div>
 					<hr />
-					<label for="canonicalvalueset">valueSet (canonical reference to the value set with entire code system):</label><br />
-					<input type="text" id="canonicalvalueset" name="canonicalvalueset" size="100" /><br />
+					<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
+					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
+					<hr />
+                    <label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
+                    <div class="radiogroup">
+						<input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
+						<label for="hierarchyMeaningGroupedBy">grouped-by</label>
+                        <input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
+						<label for="hierarchyMeaningIsA">is-a</label>
+                        <input type="radio" id="hierarchyMeaningPartOf" name="hierarchyMeaning" value="part-of">
+						<label for="hierarchyMeaningPartOf">part-of</label>
+                        <input type="radio" id="hierarchyMeaningClassifiedWith" name="hierarchyMeaning" value="classified-with">
+						<label for="hierarchyMeaningClassifiedWith">classified-with</label>
+						<button type="button" id="clearHierarchyMeaning">Clear</button>
+					</div>
+					<hr />
+					<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
+					<div class="radiogroup">
+						<input type="radio" id="compositionalTrue" name="compositional" value="true">
+						<label for="compositionalTrue">true</label>
+						<input type="radio" id="compositionalFalse" name="compositional" value="false">
+						<label for="compositionalFalse">false</label>
+						<button type="button" id="clearCompositional">Clear</button>
+					</div>
+					<hr />
+					<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
+					<div class="radiogroup">
+						<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
+						<label for="versionNeededTrue">true</label>
+						<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
+						<label for="versionNeededFalse">false</label>
+						<button type="button" id="clearVersionNeeded">Clear</button>
+					</div>
+					<hr />
+					<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
+					<input type="text" id="supplements" name="supplements" size="100" /><br />
+					<hr />
+        			<!-- TODO: regexp -->
+                    <label for="count">count (total concepts in the code system):</label><br />
+					<input type="text" id="count" name="count" size="5" /><br />
 					<hr />
 				</div>
+				<div id="valueSetDiv" style="display: none">
+					<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
+					<div class="radiogroup">
+						<input type="radio" id="immutableTrue" name="immutable" value="true">
+						<label for="immutableTrue">true</label>
+						<input type="radio" id="immutableFalse" name="immutable" value="false">
+						<label for="immutableFalse">false</label>
+						<button type="button" id="clearImmutable">Clear</button>
+					</div>
+					<hr />
+                </div>
 
 
 
@@ -271,18 +320,18 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 			<script>
 
 				// ???
-				const codesystemRadiobutton = document.getElementById('codesystem');
-				codesystemRadiobutton.addEventListener('click', () => {
-					document.getElementById('codesystemDiv').style.display = "block";
-					//document.getElementById('valuesetDiv').style.display = "none";
-				}
+				const codeSystemRadioButton = document.getElementById('codeSystem');
+				codeSystemRadioButton.addEventListener('click', () => {
+					document.getElementById('codeSystemDiv').style.display = "block";
+					document.getElementById('valueSetDiv').style.display = "none";
+				});
 
 				// ???
-				const valuesetRadiobutton = document.getElementById('valueset');
-				valuesetRadiobutton.addEventListener('click', () => {
-					document.getElementById('codesystemDiv').style.display = "none";
-					//document.getElementById('valuesetDiv').style.display = "block";
-				}
+				const valueSetRadioButton = document.getElementById('valueSet');
+				valueSetRadioButton.addEventListener('click', () => {
+					document.getElementById('codeSystemDiv').style.display = "none";
+					document.getElementById('valueSetDiv').style.display = "block";
+				});
 
 				// Clear the selection for the 'experimental' radiogroup.
 				const clearExperimentalButton = document.getElementById('clearExperimental');
@@ -298,10 +347,38 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					clearRadiobuttons(radioButtons);
 				});
 
-				// Clear the selection for a list of radiobuttons.
-				function clearRadiobuttons(radiobuttons) {
+                // Clear the selection for the 'hierarchyMeaning' radiogroup.
+				const clearHierarchyMeaningButton = document.getElementById('clearHierarchyMeaning');
+				clearHierarchyMeaningButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('hierarchyMeaning');
+					clearRadiobuttons(radioButtons);
+				});
 
-					for (const radioButton of radiobuttons) {
+                // Clear the selection for the 'hierarchyMeaning' radiogroup.
+				const clearCompositionalButton = document.getElementById('clearCompositional');
+				clearCompositionalButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('compositional');
+					clearRadiobuttons(radioButtons);
+				});
+
+                // Clear the selection for the 'versionNeeded' radiogroup.
+				const clearVersionNeededButton = document.getElementById('clearVersionNeeded');
+				clearVersionNeededButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('versionNeeded');
+					clearRadiobuttons(radioButtons);
+				});
+
+                // Clear the selection for the 'versionNeeded' radiogroup.
+				const clearImmutableButton = document.getElementById('clearImmutable');
+				clearImmutableButton.addEventListener('click', () => {
+					const radioButtons = document.getElementsByName('immutable');
+					clearRadiobuttons(radioButtons);
+				});
+
+				// Clear the selection for a list of radiobuttons.
+				function clearRadiobuttons(radioButtons) {
+
+					for (const radioButton of radioButtons) {
 						radioButton.checked = false;
 					}
 				}
@@ -355,5 +432,5 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 				}
 			</script>
 		</body>
-	</html>	`;
+	</html>`;
 }
