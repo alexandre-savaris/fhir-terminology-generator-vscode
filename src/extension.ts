@@ -103,66 +103,23 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 	return `<!DOCTYPE html>
 	<html>
 		<head>
-			<title>Formulário de Entrada de Dados</title>
-			<!--
-			<link rel="stylesheet" type="text/css" href="style.css">
-			-->
 			<style>
 				body {
 					font-family: sans-serif;
-				}
-				/*
-				#fhirTerminologyForm {
-					display: flex;
-					flex-direction: column;
-					align-items: center;
-					width: 300px;
-					margin: 0 auto;
-					padding: 20px;
-					border: 1px solid #ccc;
-					border-radius: 5px;
-				}
-				
-				.radiogroup {
-					display: flex;
-					flex-direction: row;
-					margin-bottom: 15px;
-				}
-				
-				.radiogroup input[type="radio"] {
-					margin-right: 5px;
-				}
-				
-				.radiogroup label {
-					margin-right: 20px;
-				}
-				
-				#clearButton, #submitButton {
-					padding: 10px 20px;
-					background-color: #4CAF50;
-					color: white;
-					border: none;
-					border-radius: 5px;
-					cursor: pointer;
-					margin-top: 10px;
-				}
-				*/
-				#submitButton {
-					background-color: #3e8e41;
 				}
 			</style>
 		</head>
 		<body>
 			<h1>FHIR® Terminology Generator - R5</h1>
-			<form id="fhirTerminologyForm">
-				<label for="terminologyInstance">Terminology instance type:</label>
-				<div class="radiogroup">
-					<input type="radio" id="codeSystem" name="terminologyInstance" value="CodeSystem" checked>
-					<label for="codesystem">CodeSystem</label>
-					<input type="radio" id="valueSet" name="terminologyInstance" value="ValueSet">
-					<label for="valueSet">ValueSet</label>
-				</div>
-				<hr />
+			<label for="terminologyInstance">Terminology instance type:</label>
+			<div class="radiogroup">
+				<input type="radio" id="codeSystem" name="terminologyInstance" value="CodeSystem" checked>
+				<label for="codesystem">CodeSystem</label>
+				<input type="radio" id="valueSet" name="terminologyInstance" value="ValueSet">
+				<label for="valueSet">ValueSet</label>
+			</div>
+			<hr />
+			<div id="commonDiv">
 				<label for="url">url (canonical identifier for this instance):</label><br />
 				<input type="text" id="url" name="url" size="100" /><br />
 				<hr />
@@ -223,110 +180,99 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 				<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
 				<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
 				<hr />
-				<div id="codeSystemDiv">
-					<label for="content">content (the extent of the content of the code system):</label>
-					<div class="radiogroup">
-						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
-						<label for="contentNotPresent">not-present</label>
-						<input type="radio" id="contentExample" name="content" value="example">
-						<label for="contentExample">example</label>
-						<input type="radio" id="contentFragment" name="content" value="fragment">
-						<label for="contentFragment">fragment</label>
-						<input type="radio" id="contentComplete" name="content" value="complete">
-						<label for="contentComplete">complete</label>
-						<input type="radio" id="contentSupplement" name="content" value="supplement">
-						<label for="contentSupplement">supplement</label>
-					</div>
-					<hr />
-					<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
-					<div class="radiogroup">
-						<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
-						<label for="caseSensitiveTrue">true</label>
-						<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
-						<label for="caseSensitiveFalse">false</label>
-						<button type="button" id="clearCaseSensitive">Clear</button>
-					</div>
-					<hr />
-					<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
-					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
-					<hr />
+			</div>
+			<div id="codeSystemDiv">
+				<label for="content">content (the extent of the content of the code system):</label>
+				<div class="radiogroup">
+					<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
+					<label for="contentNotPresent">not-present</label>
+					<input type="radio" id="contentExample" name="content" value="example">
+					<label for="contentExample">example</label>
+					<input type="radio" id="contentFragment" name="content" value="fragment">
+					<label for="contentFragment">fragment</label>
+					<input type="radio" id="contentComplete" name="content" value="complete">
+					<label for="contentComplete">complete</label>
+					<input type="radio" id="contentSupplement" name="content" value="supplement">
+					<label for="contentSupplement">supplement</label>
+				</div>
+				<hr />
+				<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
+				<div class="radiogroup">
+					<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
+					<label for="caseSensitiveTrue">true</label>
+					<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
+					<label for="caseSensitiveFalse">false</label>
+					<button type="button" id="clearCaseSensitive">Clear</button>
+				</div>
+				<hr />
+				<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
+				<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
+				<hr />
                     <label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
                     <div class="radiogroup">
-						<input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
-						<label for="hierarchyMeaningGroupedBy">grouped-by</label>
-                        <input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
-						<label for="hierarchyMeaningIsA">is-a</label>
-                        <input type="radio" id="hierarchyMeaningPartOf" name="hierarchyMeaning" value="part-of">
-						<label for="hierarchyMeaningPartOf">part-of</label>
-                        <input type="radio" id="hierarchyMeaningClassifiedWith" name="hierarchyMeaning" value="classified-with">
-						<label for="hierarchyMeaningClassifiedWith">classified-with</label>
-						<button type="button" id="clearHierarchyMeaning">Clear</button>
-					</div>
-					<hr />
-					<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
-					<div class="radiogroup">
-						<input type="radio" id="compositionalTrue" name="compositional" value="true">
-						<label for="compositionalTrue">true</label>
-						<input type="radio" id="compositionalFalse" name="compositional" value="false">
-						<label for="compositionalFalse">false</label>
-						<button type="button" id="clearCompositional">Clear</button>
-					</div>
-					<hr />
-					<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
-					<div class="radiogroup">
-						<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
-						<label for="versionNeededTrue">true</label>
-						<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
-						<label for="versionNeededFalse">false</label>
-						<button type="button" id="clearVersionNeeded">Clear</button>
-					</div>
-					<hr />
-					<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
-					<input type="text" id="supplements" name="supplements" size="100" /><br />
-					<hr />
-        			<!-- TODO: regexp -->
-                    <label for="count">count (total concepts in the code system):</label><br />
-					<input type="text" id="count" name="count" size="5" /><br />
-					<hr />
+				    <input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
+					<label for="hierarchyMeaningGroupedBy">grouped-by</label>
+                    <input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
+					<label for="hierarchyMeaningIsA">is-a</label>
+                    <input type="radio" id="hierarchyMeaningPartOf" name="hierarchyMeaning" value="part-of">
+					<label for="hierarchyMeaningPartOf">part-of</label>
+                    <input type="radio" id="hierarchyMeaningClassifiedWith" name="hierarchyMeaning" value="classified-with">
+					<label for="hierarchyMeaningClassifiedWith">classified-with</label>
+					<button type="button" id="clearHierarchyMeaning">Clear</button>
 				</div>
-				<div id="valueSetDiv" style="display: none">
-					<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
-					<div class="radiogroup">
-						<input type="radio" id="immutableTrue" name="immutable" value="true">
-						<label for="immutableTrue">true</label>
-						<input type="radio" id="immutableFalse" name="immutable" value="false">
-						<label for="immutableFalse">false</label>
-						<button type="button" id="clearImmutable">Clear</button>
-					</div>
-					<hr />
-                </div>
-
-
-
-
-
-
-
-
-				<div>
-					<p id='test'>aaa</p>
+				<hr />
+				<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
+				<div class="radiogroup">
+					<input type="radio" id="compositionalTrue" name="compositional" value="true">
+					<label for="compositionalTrue">true</label>
+					<input type="radio" id="compositionalFalse" name="compositional" value="false">
+					<label for="compositionalFalse">false</label>
+					<button type="button" id="clearCompositional">Clear</button>
 				</div>
-				<button type="button" id="clearButton">Limpar</button>
-				<input type="button" value="Send" onclick="send();">
-			</form>
-			<!--
-			<script src="script.js"></script>
-			-->
-			<script>
+				<hr />
+				<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
+				<div class="radiogroup">
+					<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
+					<label for="versionNeededTrue">true</label>
+					<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
+					<label for="versionNeededFalse">false</label>
+					<button type="button" id="clearVersionNeeded">Clear</button>
+				</div>
+				<hr />
+				<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
+				<input type="text" id="supplements" name="supplements" size="100" /><br />
+				<hr />
+        		<!-- TODO: regexp -->
+                <label for="count">count (total concepts in the code system):</label><br />
+				<input type="text" id="count" name="count" size="5" /><br />
+				<hr />
+			</div>
+			<div id="valueSetDiv" style="display: none">
+				<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
+				<div class="radiogroup">
+					<input type="radio" id="immutableTrue" name="immutable" value="true">
+					<label for="immutableTrue">true</label>
+					<input type="radio" id="immutableFalse" name="immutable" value="false">
+					<label for="immutableFalse">false</label>
+					<button type="button" id="clearImmutable">Clear</button>
+				</div>
+				<hr />
+            </div>
+		    <div>
+				<p id='test'>aaa</p>
+			</div>
+			<input type="button" value="Send" onclick="send();">
+            
+		    <script>
 
-				// ???
+                // Show/hide elements according to the selection.
 				const codeSystemRadioButton = document.getElementById('codeSystem');
 				codeSystemRadioButton.addEventListener('click', () => {
 					document.getElementById('codeSystemDiv').style.display = "block";
 					document.getElementById('valueSetDiv').style.display = "none";
 				});
 
-				// ???
+				// Show/hide elements according to the selection.
 				const valueSetRadioButton = document.getElementById('valueSet');
 				valueSetRadioButton.addEventListener('click', () => {
 					document.getElementById('codeSystemDiv').style.display = "none";
@@ -383,54 +329,66 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					}
 				}
 				
-
-
-
-
-
-				const clearButton = document.getElementById('clearButton');
-				const submitButton = document.getElementById('submitButton');
-				const fhirTerminologyForm = document.getElementById('fhirTerminologyForm');
-	
-				clearButton.addEventListener('click', () => {
-				const radios = document.querySelectorAll('.radiogroup input[type="radio"]');
-				for (const radio of radios) {
-					radio.checked = false;
-				}
-				});
-	
-				submitButton.addEventListener('click', (event) => {
-				event.preventDefault();
-	
-				const selectedRadio = document.querySelector('.radiogroup input[type="radio"]:checked');
-				if (!selectedRadio) {
-					alert('Selecione um status!');
-					return;
-				}
-				});
-
 				// ???
 				function send() {
-					const vscode = acquireVsCodeApi();
-
-					let form = document.getElementById("fhirTerminologyForm");
+					//const vscode = acquireVsCodeApi();
 					let formData = {};
-					for (let i = 0; i < form.elements.length; i++) {
-						let element = form.elements[i];
-						//if (element.type !== "submit") {
-							formData[element.name] = element.value;
-						//}
-					}
+
+					// Retrieve values from elements.
+                    // Common div.
+                    retrieveTextualInputs(commonDiv, formData);
+                    formData['status'] = document.querySelector('input[name="status"]:checked').value;
+                    if (document.querySelector('input[name="experimental"]:checked') !== null) {
+                        formData['experimental'] = document.querySelector('input[name="experimental"]:checked').value;
+                    }
+                    if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
+                        retrieveTextualInputs(codeSystemDiv, formData);
+                        formData['content'] = document.querySelector('input[name="content"]:checked').value;
+                        if (document.querySelector('input[name="caseSensitive"]:checked') !== null) {
+                            formData['caseSensitive'] = document.querySelector('input[name="caseSensitive"]:checked').value;
+                        }
+                        if (document.querySelector('input[name="hierarchyMeaning"]:checked') !== null) {
+                            formData['hierarchyMeaning'] = document.querySelector('input[name="hierarchyMeaning"]:checked').value;
+                        }
+                        if (document.querySelector('input[name="compositional"]:checked') !== null) {
+                            formData['compositional'] = document.querySelector('input[name="compositional"]:checked').value;
+                        }
+                        if (document.querySelector('input[name="versionNeeded"]:checked') !== null) {
+                            formData['versionNeeded'] = document.querySelector('input[name="versionNeeded"]:checked').value;
+                        }
+                    } else {  // ValueSet div.
+                        retrieveTextualInputs(valueSetDiv, formData);
+                        if (document.querySelector('input[name="immutable"]:checked') !== null) {
+                            formData['immutable'] = document.querySelector('input[name="immutable"]:checked').value;
+                        }
+                    }
+
 					let jsonData = JSON.stringify(formData);
 					const test = document.getElementById("test");
 					test.innerHTML = jsonData; 
 
-					vscode.postMessage({
-                        command: 'formData',
-                        text: jsonData
-                    })
+					//vscode.postMessage({
+                    //    command: 'formData',
+                    //    text: jsonData
+                    //})
 				}
+
+				// ???
+				function retrieveTextualInputs(div, formData) {
+
+					// Loop on the div's child nodes.
+					for (let i = 0; i < div.childNodes.length; i++) {
+						let element = div.childNodes[i];
+						if (element.type === "text" || element.type === "textarea") {
+							if (element.value.trim().length > 0) {
+								formData[element.name] = element.value;
+							}
+						}
+					}
+				}
+
 			</script>
+
 		</body>
 	</html>`;
 }
