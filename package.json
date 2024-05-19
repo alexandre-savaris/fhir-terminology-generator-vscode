@@ -39,6 +39,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@fast-csv/parse": "^5.0.0"
+    "@fast-csv/parse": "^5.0.0",
+    "@types/mustache": "^4.2.5"
   }
 }

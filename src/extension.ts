@@ -1,7 +1,11 @@
+// TODO: review variable declarations (let, var, const).
 // The module 'vscode' contains the VS Code extensibility API.
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
+// For CSV parsing.
 import * as csv from '@fast-csv/parse';
+// For rendering templates.
+import Mustache from 'mustache';
 //import * as fs from 'fs';
 //import * as path from 'path';
 
@@ -61,7 +65,24 @@ export function activate(context: vscode.ExtensionContext) {
 				currentPanel.webview.onDidReceiveMessage(
 					message => {
 						switch (message.command) {
-							case 'formData':
+							case 'CodeSystem':
+								// Create a new document with the terminology's contet.
+								vscode.workspace.openTextDocument({
+									content: message.text,
+									language: "json"
+								}).then(newDocument => {
+									vscode.window.showTextDocument(newDocument);
+								});
+								vscode.window.setStatusBarMessage(message.text);
+								return;
+							case 'ValueSet':
+								// Create a new document with the terminology's contet.
+								vscode.workspace.openTextDocument({
+									content: message.text,
+									language: "json"
+								}).then(newDocument => {
+									vscode.window.showTextDocument(newDocument);
+								});
 								vscode.window.setStatusBarMessage(message.text);
 								return;
 							}
@@ -87,18 +108,6 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 function getWebviewContent(context: vscode.ExtensionContext) {
-/*
-	let html = '';
-
-	fs.readFile(path.join(context.extensionPath, 'src', 'temp_form.html'), (err, data) => {
-		if(err) {
-			console.error(err);
-		}
-		html = data.toString();
-	});
-
-	return html;
-*/
 
 	return `<!DOCTYPE html>
 	<html>
@@ -261,7 +270,7 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 		    <div>
 				<p id='test'>aaa</p>
 			</div>
-			<input type="button" value="Send" onclick="send();">
+			<input type="button" value="Generate" onclick="generate();">
             
 		    <script>
 
@@ -329,59 +338,63 @@ function getWebviewContent(context: vscode.ExtensionContext) {
 					}
 				}
 				
-				// ???
-				function send() {
-					//const vscode = acquireVsCodeApi();
-					let formData = {};
+				// Generate a JSON object with the input values and send it to the extension.
+				function generate() {
+					// Access point to the VSCode API.
+					const vscode = acquireVsCodeApi();
+					// The object to be filled with the input data.
+					let inputData = {};
 
 					// Retrieve values from elements.
+                    inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
                     // Common div.
-                    retrieveTextualInputs(commonDiv, formData);
-                    formData['status'] = document.querySelector('input[name="status"]:checked').value;
+                    retrieveTextualInputs(commonDiv, inputData);
+                    inputData['status'] = document.querySelector('input[name="status"]:checked').value;
                     if (document.querySelector('input[name="experimental"]:checked') !== null) {
-                        formData['experimental'] = document.querySelector('input[name="experimental"]:checked').value;
+                        inputData['experimental'] = document.querySelector('input[name="experimental"]:checked').value;
                     }
                     if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
-                        retrieveTextualInputs(codeSystemDiv, formData);
-                        formData['content'] = document.querySelector('input[name="content"]:checked').value;
+                        retrieveTextualInputs(codeSystemDiv, inputData);
+                        inputData['content'] = document.querySelector('input[name="content"]:checked').value;
                         if (document.querySelector('input[name="caseSensitive"]:checked') !== null) {
-                            formData['caseSensitive'] = document.querySelector('input[name="caseSensitive"]:checked').value;
+                            inputData['caseSensitive'] = document.querySelector('input[name="caseSensitive"]:checked').value;
                         }
                         if (document.querySelector('input[name="hierarchyMeaning"]:checked') !== null) {
-                            formData['hierarchyMeaning'] = document.querySelector('input[name="hierarchyMeaning"]:checked').value;
+                            inputData['hierarchyMeaning'] = document.querySelector('input[name="hierarchyMeaning"]:checked').value;
                         }
                         if (document.querySelector('input[name="compositional"]:checked') !== null) {
-                            formData['compositional'] = document.querySelector('input[name="compositional"]:checked').value;
+                            inputData['compositional'] = document.querySelector('input[name="compositional"]:checked').value;
                         }
                         if (document.querySelector('input[name="versionNeeded"]:checked') !== null) {
-                            formData['versionNeeded'] = document.querySelector('input[name="versionNeeded"]:checked').value;
+                            inputData['versionNeeded'] = document.querySelector('input[name="versionNeeded"]:checked').value;
                         }
                     } else {  // ValueSet div.
-                        retrieveTextualInputs(valueSetDiv, formData);
+                        retrieveTextualInputs(valueSetDiv, inputData);
                         if (document.querySelector('input[name="immutable"]:checked') !== null) {
-                            formData['immutable'] = document.querySelector('input[name="immutable"]:checked').value;
+                            inputData['immutable'] = document.querySelector('input[name="immutable"]:checked').value;
                         }
                     }
 
-					let jsonData = JSON.stringify(formData);
+					let jsonData = JSON.stringify(inputData);
 					const test = document.getElementById("test");
-					test.innerHTML = jsonData; 
+					test.innerHTML = jsonData;
 
-					//vscode.postMessage({
-                    //    command: 'formData',
-                    //    text: jsonData
-                    //})
+					// Send the input data to the extension.
+					vscode.postMessage({
+                        command: document.querySelector('input[name="terminologyInstance"]:checked').value,
+                        text: jsonData
+                    })
 				}
 
-				// ???
-				function retrieveTextualInputs(div, formData) {
+				// Retrieve values from textual inputs.
+				function retrieveTextualInputs(div, inputData) {
 
 					// Loop on the div's child nodes.
 					for (let i = 0; i < div.childNodes.length; i++) {
 						let element = div.childNodes[i];
 						if (element.type === "text" || element.type === "textarea") {
 							if (element.value.trim().length > 0) {
-								formData[element.name] = element.value;
+								inputData[element.name] = element.value;
 							}
 						}
 					}
