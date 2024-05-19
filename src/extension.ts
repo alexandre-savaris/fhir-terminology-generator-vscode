@@ -6,8 +6,8 @@ import * as vscode from 'vscode';
 import * as csv from '@fast-csv/parse';
 // For rendering templates.
 import Mustache from 'mustache';
-//import * as fs from 'fs';
-//import * as path from 'path';
+// For template reading.
+import * as fs from 'fs';
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -66,10 +66,13 @@ export function activate(context: vscode.ExtensionContext) {
 					message => {
 						switch (message.command) {
 							case 'CodeSystem':
+								const commonTemplate = fillCodeSystemTemplate(context, message.text);
 								// Create a new document with the terminology's contet.
 								vscode.workspace.openTextDocument({
-									content: message.text,
-									language: "json"
+									//content: message.text,
+									content: commonTemplate,
+									//language: "json"
+									language: "text"
 								}).then(newDocument => {
 									vscode.window.showTextDocument(newDocument);
 								});
@@ -107,6 +110,23 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated.
 export function deactivate() {}
 
+// Fill the CodeSystem template with the input data.
+function fillCodeSystemTemplate(context: vscode.ExtensionContext, content: String) {
+
+	// Load the common template from disk.
+	const commonTemplatePath = vscode.Uri.joinPath(context.extensionUri, 'src/templates', 'common.mustache');
+	const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
+
+	// Load the CodeSystem template from disk.
+	const codeSystemTemplatePath = vscode.Uri.joinPath(context.extensionUri, 'src/templates', 'common.mustache');
+	const codeSystemTemplate = fs.readFileSync(codeSystemTemplatePath.fsPath, { encoding: 'utf8' });
+
+	const filledTemplate = Mustache.render(codeSystemTemplate, content, { common: commonTemplate });
+
+	return filledTemplate;
+}
+
+// Return the HTML content for the Webview.
 function getWebviewContent(context: vscode.ExtensionContext) {
 
 	return `<!DOCTYPE html>
