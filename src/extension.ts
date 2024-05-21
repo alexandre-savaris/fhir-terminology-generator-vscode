@@ -1,8 +1,8 @@
-// TODO: review variable declarations (let, var, const).
 // The module 'vscode' contains the VS Code extensibility API.
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
 // For CSV parsing.
+// TODO: CSV parsing.
 import * as csv from '@fast-csv/parse';
 // For rendering templates.
 import Mustache from 'mustache';
@@ -12,431 +12,376 @@ import * as fs from 'fs';
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
 export function activate(context: vscode.ExtensionContext) {
-	// Track the current panel with a webview.
-	let currentPanel: vscode.WebviewPanel | undefined = undefined;
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error).
-	// This line of code will only be executed once when your extension is activated.
-	console.log('Congratulations, your extension "fhir-terminology-generator-vscode" is now active!');
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fhir-terminology-generator-vscode.start', () => {
 
-			// Parse the CSV content from the opened document (if any).
-			const activeTextEditor = vscode.window.activeTextEditor;
-			if (activeTextEditor) {
-				const documentText = activeTextEditor.document.getText();
-
-				const stream = csv.parse({ delimiter: ';', headers: true })
-					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
-					.on('data', row => vscode.window.setStatusBarMessage(row))
-					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
-				stream.write(documentText);
-				stream.end();
-			} else {
-				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
-				return;
-			}
-
-			const columnToShowIn = vscode.window.activeTextEditor
-				? vscode.window.activeTextEditor.viewColumn
-				: undefined;
-			if (currentPanel) {
-				// If we already have a panel, show it in the target column.
-				currentPanel.reveal(columnToShowIn);
-			} else {
-				// Otherwise, create a new panel.
-				currentPanel = vscode.window.createWebviewPanel(
-					'fhir-terminology-generator-vscode', // Identifies the type of the webview. Used internally.
-					'FHIR® Terminology Generator', // Title of the panel displayed to the user.
-					columnToShowIn || vscode.ViewColumn.One, // Editor column to show the new webview panel in.
-					{
-						// Only allow the webview to access resources in the 'src' directory.
-						localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'src')],
-						// Keep the Webview's content available.
-						//retainContextWhenHidden: true,
-						// Enable script execution.
-						enableScripts: true
-					} // Webview options.
- 				);
-
-				// Load the HTML into the webview.
-				currentPanel.webview.html = getWebviewContent(context);
-
-				// Handle messages from the webview.
-				currentPanel.webview.onDidReceiveMessage(
-					message => {
-						switch (message.command) {
-							case 'CodeSystem':
-								const commonTemplate = fillCodeSystemTemplate(context, message.text);
-								// Create a new document with the terminology's contet.
-								vscode.workspace.openTextDocument({
-									//content: message.text,
-									content: commonTemplate,
-									//language: "json"
-									language: "text"
-								}).then(newDocument => {
-									vscode.window.showTextDocument(newDocument);
-								});
-								vscode.window.setStatusBarMessage(message.text);
-								return;
-							case 'ValueSet':
-								// Create a new document with the terminology's contet.
-								vscode.workspace.openTextDocument({
-									content: message.text,
-									language: "json"
-								}).then(newDocument => {
-									vscode.window.showTextDocument(newDocument);
-								});
-								vscode.window.setStatusBarMessage(message.text);
-								return;
-							}
-					},
-					undefined,
-					context.subscriptions
-				);				
-
-				// Reset when the current panel is closed.
-				currentPanel.onDidDispose(
-					() => {
-						currentPanel = undefined;
-					},
-					null,
-					context.subscriptions
-				);
-			}
+			FhirTerminologyGeneratorPanel.createOrShow(context.extensionUri);
 		})
 	);
+
+	if (vscode.window.registerWebviewPanelSerializer) {
+		// Make sure we register a serializer in activation event.
+		vscode.window.registerWebviewPanelSerializer(FhirTerminologyGeneratorPanel.viewType, {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
+				// TODO: review 'console.log'.
+				console.log(`Got state: ${state}`);
+				// Reset the webview options so we use latest uri for `localResourceRoots`.
+				webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
+				FhirTerminologyGeneratorPanel.revive(webviewPanel, context.extensionUri);
+			}
+		});
+	}
 }
 
-// This method is called when your extension is deactivated.
-export function deactivate() {}
+// Return the Webview options.
+function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
 
-// Fill the CodeSystem template with the input data.
-function fillCodeSystemTemplate(context: vscode.ExtensionContext, content: string) {
-
-	// Load the common template from disk.
-	const commonTemplatePath = vscode.Uri.joinPath(context.extensionUri, 'src/templates', 'common.mustache');
-	const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
-
-	// Load the CodeSystem template from disk.
-	const codeSystemTemplatePath = vscode.Uri.joinPath(context.extensionUri, 'src/templates', 'CodeSystem.mustache');
-	const codeSystemTemplate = fs.readFileSync(codeSystemTemplatePath.fsPath, { encoding: 'utf8' });
-
-	// Fill the template with the input data.
-	const filledTemplate = Mustache.render(codeSystemTemplate, JSON.parse(content), { common: commonTemplate });
-
-	return filledTemplate;
+	return {
+		// Enable javascript in the webview.
+		enableScripts: true,
+		// And restrict the webview to only loading content from our extension's `media` directory.
+		localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
+	};
 }
 
-// Return the HTML content for the Webview.
-function getWebviewContent(context: vscode.ExtensionContext) {
+/**
+ * Manage the FHIR® Terminology Generator Webview panel.
+ */
+class FhirTerminologyGeneratorPanel {
+	// Track the currently panel. Only allow a single panel to exist at a time.
+	public static currentPanel: FhirTerminologyGeneratorPanel | undefined;
+	// For controlling the exhibition of a single panel of the specified type.
+	public static readonly viewType = 'fhirTerminologyGenerator';
+	private readonly _panel: vscode.WebviewPanel;
+	private readonly _extensionUri: vscode.Uri;
+	private _disposables: vscode.Disposable[] = [];
 
-	return `<!DOCTYPE html>
-	<html>
-		<head>
-			<style>
-				body {
-					font-family: sans-serif;
+	// Create the panel or show the current one (if it already exists).
+	public static createOrShow(extensionUri: vscode.Uri) {
+
+		const column = vscode.window.activeTextEditor
+			? vscode.window.activeTextEditor.viewColumn
+			: undefined;
+
+		// If we already have a panel, show it.
+		if (FhirTerminologyGeneratorPanel.currentPanel) {
+			FhirTerminologyGeneratorPanel.currentPanel._panel.reveal(column);
+			return;
+		}
+
+		// Otherwise, create a new panel.
+		const panel = vscode.window.createWebviewPanel(
+			FhirTerminologyGeneratorPanel.viewType,
+			'FHIR® Terminology Generator - R5',
+			column || vscode.ViewColumn.One,
+			getWebviewOptions(extensionUri)
+		);
+
+		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri);
+	}
+
+	// Revive a panel.
+	public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+
+		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri);
+	}
+
+	// The FhirTerminologyGeneratorPanel class constructor.
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+
+		this._panel = panel;
+		this._extensionUri = extensionUri;
+
+		// Set the Webview's initial HTML content.
+		this._update();
+
+		// Listen for when the panel is disposed.
+		// This happens when the user closes the panel or when the panel is closed programmatically.
+		this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+
+		// Update the content based on view changes.
+		this._panel.onDidChangeViewState(
+			e => {
+				if (this._panel.visible) {
+					this._update();
 				}
-			</style>
-		    <script>
+			},
+			null,
+			this._disposables
+		);
 
-                // Show/hide elements according to the selection.
-				const codeSystemRadioButton = document.getElementById('codeSystem');
-				codeSystemRadioButton.addEventListener('click', () => {
-					document.getElementById('codeSystemDiv').style.display = "block";
-					document.getElementById('valueSetDiv').style.display = "none";
-				});
-
-				// Show/hide elements according to the selection.
-				const valueSetRadioButton = document.getElementById('valueSet');
-				valueSetRadioButton.addEventListener('click', () => {
-					document.getElementById('codeSystemDiv').style.display = "none";
-					document.getElementById('valueSetDiv').style.display = "block";
-				});
-
-				// Clear the selection for the 'experimental' radiogroup.
-				const clearExperimentalButton = document.getElementById('clearExperimental');
-				clearExperimentalButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('experimental');
-					clearRadiobuttons(radioButtons);
-				});
-
-				// Clear the selection for the 'caseSensitive' radiogroup.
-				const clearCaseSensitiveButton = document.getElementById('clearCaseSensitive');
-				clearCaseSensitiveButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('caseSensitive');
-					clearRadiobuttons(radioButtons);
-				});
-
-                // Clear the selection for the 'hierarchyMeaning' radiogroup.
-				const clearHierarchyMeaningButton = document.getElementById('clearHierarchyMeaning');
-				clearHierarchyMeaningButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('hierarchyMeaning');
-					clearRadiobuttons(radioButtons);
-				});
-
-                // Clear the selection for the 'hierarchyMeaning' radiogroup.
-				const clearCompositionalButton = document.getElementById('clearCompositional');
-				clearCompositionalButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('compositional');
-					clearRadiobuttons(radioButtons);
-				});
-
-                // Clear the selection for the 'versionNeeded' radiogroup.
-				const clearVersionNeededButton = document.getElementById('clearVersionNeeded');
-				clearVersionNeededButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('versionNeeded');
-					clearRadiobuttons(radioButtons);
-				});
-
-                // Clear the selection for the 'versionNeeded' radiogroup.
-				const clearImmutableButton = document.getElementById('clearImmutable');
-				clearImmutableButton.addEventListener('click', () => {
-					const radioButtons = document.getElementsByName('immutable');
-					clearRadiobuttons(radioButtons);
-				});
-
-				// Clear the selection for a list of radiobuttons.
-				function clearRadiobuttons(radioButtons) {
-
-					for (const radioButton of radioButtons) {
-						radioButton.checked = false;
+		// Handle messages from the Webview.
+		this._panel.webview.onDidReceiveMessage(
+			message => {
+				switch (message.command) {
+					case 'CodeSystem':
+						const commonTemplate = this._fillCodeSystemTemplate(message.text);
+						// Create a new document with the terminology's contet.
+						vscode.workspace.openTextDocument({
+							//content: message.text,
+							content: commonTemplate,
+							language: "json"
+						}).then(newDocument => {
+							vscode.window.showTextDocument(newDocument);
+						});
+						vscode.window.setStatusBarMessage(message.text);
+						return;
+					case 'ValueSet':
+						// Create a new document with the terminology's contet.
+						vscode.workspace.openTextDocument({
+							content: message.text,
+							language: "json"
+						}).then(newDocument => {
+							vscode.window.showTextDocument(newDocument);
+						});
+						vscode.window.setStatusBarMessage(message.text);
+						return;
 					}
-				}
-				
-				// Generate a JSON object with the input values and send it to the extension.
-				function generate() {
-					// Access point to the VSCode API.
-					const vscode = acquireVsCodeApi();
-					// The object to be filled with the input data.
-					let inputData = {};
+			},
+			null,
+			this._disposables
+		);
+	}
 
-					// Retrieve values from elements.
-                    inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
-                    // Common div.
-                    retrieveTextualInputs(commonDiv, inputData);
-                    inputData['status'] = document.querySelector('input[name="status"]:checked').value;
-                    if (document.querySelector('input[name="experimental"]:checked') !== null) {
-                        inputData['experimental'] = document.querySelector('input[name="experimental"]:checked').value;
-                    }
-                    if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
-                        retrieveTextualInputs(codeSystemDiv, inputData);
-                        inputData['content'] = document.querySelector('input[name="content"]:checked').value;
-                        if (document.querySelector('input[name="caseSensitive"]:checked') !== null) {
-                            inputData['caseSensitive'] = document.querySelector('input[name="caseSensitive"]:checked').value;
-                        }
-                        if (document.querySelector('input[name="hierarchyMeaning"]:checked') !== null) {
-                            inputData['hierarchyMeaning'] = document.querySelector('input[name="hierarchyMeaning"]:checked').value;
-                        }
-                        if (document.querySelector('input[name="compositional"]:checked') !== null) {
-                            inputData['compositional'] = document.querySelector('input[name="compositional"]:checked').value;
-                        }
-                        if (document.querySelector('input[name="versionNeeded"]:checked') !== null) {
-                            inputData['versionNeeded'] = document.querySelector('input[name="versionNeeded"]:checked').value;
-                        }
-                    } else {  // ValueSet div.
-                        retrieveTextualInputs(valueSetDiv, inputData);
-                        if (document.querySelector('input[name="immutable"]:checked') !== null) {
-                            inputData['immutable'] = document.querySelector('input[name="immutable"]:checked').value;
-                        }
-                    }
+	// Dispose the Webview panel.
+	public dispose() {
 
-					let jsonData = JSON.stringify(inputData);
-					const test = document.getElementById("test");
-					test.innerHTML = jsonData;
+		FhirTerminologyGeneratorPanel.currentPanel = undefined;
 
-					// Persist the input data for (possible) later use.
-					vscode.setState(jsonData);
+		// Clean up our resources.
+		this._panel.dispose();
 
-					// Send the input data to the extension.
-					vscode.postMessage({
-                        command: document.querySelector('input[name="terminologyInstance"]:checked').value,
-                        text: jsonData
-                    })
-				}
+		while (this._disposables.length) {
+			const x = this._disposables.pop();
+			if (x) {
+				x.dispose();
+			}
+		}
+	}
 
-				// Retrieve values from textual inputs.
-				function retrieveTextualInputs(div, inputData) {
+	private _update() {
 
-					// Loop on the div's child nodes.
-					for (let i = 0; i < div.childNodes.length; i++) {
-						let element = div.childNodes[i];
-						if (element.type === "text" || element.type === "textarea") {
-							if (element.value.trim().length > 0) {
-								inputData[element.name] = element.value;
-							}
-						}
-					}
-				}
+		// The Webview instance.
+		const webview = this._panel.webview;
+		// The panel's title.
+		this._panel.title = 'FHIR® Terminology Generator - R5';
+		// The panel's HTML content.
+		this._panel.webview.html = this._getHtmlForWebview(webview);
+	}
 
-				// ???
-				function retrieveState() {
-					// Access point to the VSCode API.
-					const vscode = acquireVsCodeApi();
+	// Fill the CodeSystem template with the input data.
+	private _fillCodeSystemTemplate(content: string) {
 
-					const previousState = vscode.getState();
-					if (previousState) {
-						const test = document.getElementById("test");
-						test.innerHTML = previousState;
-					}
-				}
-			</script>
-		</head>
-		<body onload="retrieveState();">
-			<h1>FHIR® Terminology Generator - R5</h1>
-			<label for="terminologyInstance">Terminology instance type:</label>
-			<div class="radiogroup">
-				<input type="radio" id="codeSystem" name="terminologyInstance" value="CodeSystem" checked>
-				<label for="codesystem">CodeSystem</label>
-				<input type="radio" id="valueSet" name="terminologyInstance" value="ValueSet">
-				<label for="valueSet">ValueSet</label>
-			</div>
-			<hr />
-			<div id="commonDiv">
-				<label for="url">url (canonical identifier for this instance):</label><br />
-				<input type="text" id="url" name="url" size="100" /><br />
-				<hr />
-				<label for="version">version (business version for this instance):</label><br />
-				<input type="text" id="version" name="version" size="50" /><br />
-				<hr />
-				<label for="name">name (name for this instance (computer friendly)):</label><br />
-				<input type="text" id="name" name="name" size="100" /><br />
-				<hr />
-				<label for="title">title (name for this instance (human friendly)):</label><br />
-				<input type="text" id="title" name="title" size="100" /><br />
-				<hr />
-				<label for="status">status (the status of this instance):</label>
+		// Load the common template from disk.
+		const commonTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'common.mustache');
+		const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
+
+		// Load the CodeSystem template from disk.
+		const codeSystemTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'CodeSystem.mustache');
+		const codeSystemTemplate = fs.readFileSync(codeSystemTemplatePath.fsPath, { encoding: 'utf8' });
+
+		// Fill the template with the input data.
+		const filledTemplate = Mustache.render(codeSystemTemplate, JSON.parse(content), { common: commonTemplate });
+
+		return filledTemplate;
+	}
+
+	private _getHtmlForWebview(webview: vscode.Webview) {
+		// Local path to main script run in the Webview.
+		const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'media', 'script.js');
+		// And the URI we use to load this script in the Webview.
+		const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
+		// Local path to CSS styles.
+		const styleResetPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css');
+		const stylesPathMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css');
+		// URI to load styles into the Webview.
+		const stylesResetUri = webview.asWebviewUri(styleResetPath);
+		const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
+		// Use a nonce to only allow specific scripts to be run.
+		const nonce = getNonce();
+
+		return `<!DOCTYPE html>
+		<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<!--
+					Use a content security policy to only allow loading images from https or from our extension directory,
+					and only allow scripts that have a specific nonce.
+				-->
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<link href="${stylesResetUri}" rel="stylesheet">
+				<link href="${stylesMainUri}" rel="stylesheet">
+				<title>FHIR® Terminology Generator - R5</title>
+			</head>
+			<body>
+				<h1>FHIR® Terminology Generator - R5</h1>
+				<label for="terminologyInstance">Terminology instance type:</label>
 				<div class="radiogroup">
-					<input type="radio" id="statusDraft" name="status" value="draft" checked>
-					<label for="statusDraft">draft</label>
-					<input type="radio" id="statusActive" name="status" value="active">
-					<label for="statusActive">active</label>
-					<input type="radio" id="statusRetired" name="status" value="retired">
-					<label for="statusRetired">retired</label>
-					<input type="radio" id="statusUnknown" name="status" value="unknown">
-					<label for="statusUnknown">unknown</label>
+					<input type="radio" id="codeSystem" name="terminologyInstance" value="CodeSystem" checked>
+					<label for="codesystem">CodeSystem</label>
+					<input type="radio" id="valueSet" name="terminologyInstance" value="ValueSet">
+					<label for="valueSet">ValueSet</label>
 				</div>
 				<hr />
-				<label for="experimental">experimental (for testing purposes, not real usage):</label>
-				<div class="radiogroup">
-					<input type="radio" id="experimentalTrue" name="experimental" value="true">
-					<label for="experimentalTrue">true</label>
-					<input type="radio" id="experimentalFalse" name="experimental" value="false">
-					<label for="experimentalFalse">false</label>
-					<button type="button" id="clearExperimental">Clear</button>
+				<div id="commonDiv">
+					<label for="url">url (canonical identifier for this instance):</label><br />
+					<input type="text" id="url" name="url" size="100" /><br />
+					<hr />
+					<label for="version">version (business version for this instance):</label><br />
+					<input type="text" id="version" name="version" size="50" /><br />
+					<hr />
+					<label for="name">name (name for this instance (computer friendly)):</label><br />
+					<input type="text" id="name" name="name" size="100" /><br />
+					<hr />
+					<label for="title">title (name for this instance (human friendly)):</label><br />
+					<input type="text" id="title" name="title" size="100" /><br />
+					<hr />
+					<label for="status">status (the status of this instance):</label>
+					<div class="radiogroup">
+						<input type="radio" id="statusDraft" name="status" value="draft" checked>
+						<label for="statusDraft">draft</label>
+						<input type="radio" id="statusActive" name="status" value="active">
+						<label for="statusActive">active</label>
+						<input type="radio" id="statusRetired" name="status" value="retired">
+						<label for="statusRetired">retired</label>
+						<input type="radio" id="statusUnknown" name="status" value="unknown">
+						<label for="statusUnknown">unknown</label>
+					</div>
+					<hr />
+					<label for="experimental">experimental (for testing purposes, not real usage):</label>
+					<div class="radiogroup">
+						<input type="radio" id="experimentalTrue" name="experimental" value="true">
+						<label for="experimentalTrue">true</label>
+						<input type="radio" id="experimentalFalse" name="experimental" value="false">
+						<label for="experimentalFalse">false</label>
+						<button type="button" id="clearExperimental">Clear</button>
+					</div>
+					<hr />
+					<!-- TODO: regexp -->
+					<label for="date">date (date of the last change (in the format YYYY, YYYY-MM, YYYY-MM-DD or YYYY-MM-DDThh:mm:ss+zz:zz)):</label><br />
+					<input type="text" id="date" name="date" size="50" /><br />
+					<hr />
+					<label for="publisher">publisher (name of the publisher/steward (organization or individual)):</label><br />
+					<input type="text" id="publisher" name="publisher" size="100" /><br />
+					<hr />
+					<label for="description">description (natural language description for the instance):</label><br />
+					<textarea id="description" name="description" rows="3" cols="100"></textarea><br />
+					<hr />
+					<label for="purpose">purpose (why this instance is defined):</label><br />
+					<textarea id="purpose" name="purpose" rows="3" cols="100"></textarea><br />
+					<hr />
+					<label for="copyright">copyright (use and/or publishing restrictions):</label><br />
+					<textarea id="copyright" name="copyright" rows="3" cols="100"></textarea><br />
+					<hr />
+					<label for="copyrightLabel">copyrightLabel (copyright holder and year(s)):</label><br />
+					<input type="text" id="copyrightLabel" name="copyrightLabel" size="100" /><br />
+					<hr />
+					<!-- TODO: regexp -->
+					<label for="approvalDate">approvalDate (when the instance was approved by publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
+					<input type="text" id="approvalDate" name="approvalDate" size="50" /><br />
+					<hr />
+					<!-- TODO: regexp -->
+					<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
+					<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
+					<hr />
 				</div>
-				<hr />
-				<!-- TODO: regexp -->
-				<label for="date">date (date of the last change (in the format YYYY, YYYY-MM, YYYY-MM-DD or YYYY-MM-DDThh:mm:ss+zz:zz)):</label><br />
-				<input type="text" id="date" name="date" size="50" /><br />
-				<hr />
-				<label for="publisher">publisher (name of the publisher/steward (organization or individual)):</label><br />
-				<input type="text" id="publisher" name="publisher" size="100" /><br />
-				<hr />
-				<label for="description">description (natural language description for the instance):</label><br />
-				<textarea id="description" name="description" rows="3" cols="100"></textarea><br />
-				<hr />
-				<label for="purpose">purpose (why this instance is defined):</label><br />
-				<textarea id="purpose" name="purpose" rows="3" cols="100"></textarea><br />
-				<hr />
-				<label for="copyright">copyright (use and/or publishing restrictions):</label><br />
-				<textarea id="copyright" name="copyright" rows="3" cols="100"></textarea><br />
-				<hr />
-				<label for="copyrightLabel">copyrightLabel (copyright holder and year(s)):</label><br />
-				<input type="text" id="copyrightLabel" name="copyrightLabel" size="100" /><br />
-				<hr />
-				<!-- TODO: regexp -->
-				<label for="approvalDate">approvalDate (when the instance was approved by publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
-				<input type="text" id="approvalDate" name="approvalDate" size="50" /><br />
-				<hr />
-				<!-- TODO: regexp -->
-				<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
-				<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
-				<hr />
-			</div>
-			<div id="codeSystemDiv">
-				<label for="content">content (the extent of the content of the code system):</label>
-				<div class="radiogroup">
-					<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
-					<label for="contentNotPresent">not-present</label>
-					<input type="radio" id="contentExample" name="content" value="example">
-					<label for="contentExample">example</label>
-					<input type="radio" id="contentFragment" name="content" value="fragment">
-					<label for="contentFragment">fragment</label>
-					<input type="radio" id="contentComplete" name="content" value="complete">
-					<label for="contentComplete">complete</label>
-					<input type="radio" id="contentSupplement" name="content" value="supplement">
-					<label for="contentSupplement">supplement</label>
+				<div id="codeSystemDiv">
+					<label for="content">content (the extent of the content of the code system):</label>
+					<div class="radiogroup">
+						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
+						<label for="contentNotPresent">not-present</label>
+						<input type="radio" id="contentExample" name="content" value="example">
+						<label for="contentExample">example</label>
+						<input type="radio" id="contentFragment" name="content" value="fragment">
+						<label for="contentFragment">fragment</label>
+						<input type="radio" id="contentComplete" name="content" value="complete">
+						<label for="contentComplete">complete</label>
+						<input type="radio" id="contentSupplement" name="content" value="supplement">
+						<label for="contentSupplement">supplement</label>
+					</div>
+					<hr />
+					<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
+					<div class="radiogroup">
+						<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
+						<label for="caseSensitiveTrue">true</label>
+						<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
+						<label for="caseSensitiveFalse">false</label>
+						<button type="button" id="clearCaseSensitive">Clear</button>
+					</div>
+					<hr />
+					<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
+					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
+					<hr />
+						<label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
+						<div class="radiogroup">
+						<input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
+						<label for="hierarchyMeaningGroupedBy">grouped-by</label>
+						<input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
+						<label for="hierarchyMeaningIsA">is-a</label>
+						<input type="radio" id="hierarchyMeaningPartOf" name="hierarchyMeaning" value="part-of">
+						<label for="hierarchyMeaningPartOf">part-of</label>
+						<input type="radio" id="hierarchyMeaningClassifiedWith" name="hierarchyMeaning" value="classified-with">
+						<label for="hierarchyMeaningClassifiedWith">classified-with</label>
+						<button type="button" id="clearHierarchyMeaning">Clear</button>
+					</div>
+					<hr />
+					<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
+					<div class="radiogroup">
+						<input type="radio" id="compositionalTrue" name="compositional" value="true">
+						<label for="compositionalTrue">true</label>
+						<input type="radio" id="compositionalFalse" name="compositional" value="false">
+						<label for="compositionalFalse">false</label>
+						<button type="button" id="clearCompositional">Clear</button>
+					</div>
+					<hr />
+					<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
+					<div class="radiogroup">
+						<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
+						<label for="versionNeededTrue">true</label>
+						<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
+						<label for="versionNeededFalse">false</label>
+						<button type="button" id="clearVersionNeeded">Clear</button>
+					</div>
+					<hr />
+					<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
+					<input type="text" id="supplements" name="supplements" size="100" /><br />
+					<hr />
+					<!-- TODO: regexp -->
+					<label for="count">count (total concepts in the code system):</label><br />
+					<input type="text" id="count" name="count" size="5" /><br />
+					<hr />
 				</div>
-				<hr />
-				<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
-				<div class="radiogroup">
-					<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
-					<label for="caseSensitiveTrue">true</label>
-					<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
-					<label for="caseSensitiveFalse">false</label>
-					<button type="button" id="clearCaseSensitive">Clear</button>
+				<div id="valueSetDiv" style="display: none">
+					<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
+					<div class="radiogroup">
+						<input type="radio" id="immutableTrue" name="immutable" value="true">
+						<label for="immutableTrue">true</label>
+						<input type="radio" id="immutableFalse" name="immutable" value="false">
+						<label for="immutableFalse">false</label>
+						<button type="button" id="clearImmutable">Clear</button>
+					</div>
+					<hr />
 				</div>
-				<hr />
-				<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
-				<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
-				<hr />
-                    <label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
-                    <div class="radiogroup">
-				    <input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
-					<label for="hierarchyMeaningGroupedBy">grouped-by</label>
-                    <input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
-					<label for="hierarchyMeaningIsA">is-a</label>
-                    <input type="radio" id="hierarchyMeaningPartOf" name="hierarchyMeaning" value="part-of">
-					<label for="hierarchyMeaningPartOf">part-of</label>
-                    <input type="radio" id="hierarchyMeaningClassifiedWith" name="hierarchyMeaning" value="classified-with">
-					<label for="hierarchyMeaningClassifiedWith">classified-with</label>
-					<button type="button" id="clearHierarchyMeaning">Clear</button>
+				<div>
+					<p id='test'>aaa</p>
 				</div>
-				<hr />
-				<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
-				<div class="radiogroup">
-					<input type="radio" id="compositionalTrue" name="compositional" value="true">
-					<label for="compositionalTrue">true</label>
-					<input type="radio" id="compositionalFalse" name="compositional" value="false">
-					<label for="compositionalFalse">false</label>
-					<button type="button" id="clearCompositional">Clear</button>
-				</div>
-				<hr />
-				<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
-				<div class="radiogroup">
-					<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
-					<label for="versionNeededTrue">true</label>
-					<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
-					<label for="versionNeededFalse">false</label>
-					<button type="button" id="clearVersionNeeded">Clear</button>
-				</div>
-				<hr />
-				<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
-				<input type="text" id="supplements" name="supplements" size="100" /><br />
-				<hr />
-        		<!-- TODO: regexp -->
-                <label for="count">count (total concepts in the code system):</label><br />
-				<input type="text" id="count" name="count" size="5" /><br />
-				<hr />
-			</div>
-			<div id="valueSetDiv" style="display: none">
-				<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
-				<div class="radiogroup">
-					<input type="radio" id="immutableTrue" name="immutable" value="true">
-					<label for="immutableTrue">true</label>
-					<input type="radio" id="immutableFalse" name="immutable" value="false">
-					<label for="immutableFalse">false</label>
-					<button type="button" id="clearImmutable">Clear</button>
-				</div>
-				<hr />
-            </div>
-		    <div>
-				<p id='test'>aaa</p>
-			</div>
-			<input type="button" value="Generate" onclick="generate();">
-		</body>
-	</html>`;
+				<button type="button" id="generate" value="Generate">
+				<script nonce="${nonce}" src="${scriptUri}"></script>
+			</body>
+		</html>`;
+	}
+}
+
+// The nonce generator.
+function getNonce() {
+	let text = '';
+	const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+	for (let i = 0; i < 32; i++) {
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+	}
+
+	return text;
 }
