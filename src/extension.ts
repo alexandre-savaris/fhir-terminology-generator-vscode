@@ -239,7 +239,7 @@ class FhirTerminologyGeneratorPanel {
 					<input type="text" id="title" name="title" size="100" /><br />
 					<hr />
 					<label for="status">status (the status of this instance):</label>
-					<div class="radiogroup">
+					<div id="statusRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="statusDraft" name="status" value="draft" checked>
 						<label for="statusDraft">draft</label>
 						<input type="radio" id="statusActive" name="status" value="active">
