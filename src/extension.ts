@@ -251,7 +251,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="experimental">experimental (for testing purposes, not real usage):</label>
-					<div class="radiogroup">
+					<div id="experimentalRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="experimentalTrue" name="experimental" value="true">
 						<label for="experimentalTrue">true</label>
 						<input type="radio" id="experimentalFalse" name="experimental" value="false">
@@ -289,7 +289,7 @@ class FhirTerminologyGeneratorPanel {
 				</div>
 				<div id="codeSystemDiv">
 					<label for="content">content (the extent of the content of the code system):</label>
-					<div class="radiogroup">
+					<div id="contentRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
 						<label for="contentNotPresent">not-present</label>
 						<input type="radio" id="contentExample" name="content" value="example">
@@ -303,7 +303,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="caseSensitive">caseSensitive (if code comparison is case sensitive):</label>
-					<div class="radiogroup">
+					<div id="caseSensitiveRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="caseSensitiveTrue" name="caseSensitive" value="true">
 						<label for="caseSensitiveTrue">true</label>
 						<input type="radio" id="caseSensitiveFalse" name="caseSensitive" value="false">
@@ -314,8 +314,8 @@ class FhirTerminologyGeneratorPanel {
 					<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
 					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
 					<hr />
-						<label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
-						<div class="radiogroup">
+					<label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
+					<div id="hierarchyMeaningRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="hierarchyMeaningGroupedBy" name="hierarchyMeaning" value="grouped-by">
 						<label for="hierarchyMeaningGroupedBy">grouped-by</label>
 						<input type="radio" id="hierarchyMeaningIsA" name="hierarchyMeaning" value="is-a">
@@ -328,7 +328,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="compositional">compositional (if the code system defines a compositional grammar):</label>
-					<div class="radiogroup">
+					<div id="compositionalRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="compositionalTrue" name="compositional" value="true">
 						<label for="compositionalTrue">true</label>
 						<input type="radio" id="compositionalFalse" name="compositional" value="false">
@@ -337,7 +337,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="versionNeeded">versionNeeded (if definitions are not stable):</label>
-					<div class="radiogroup">
+					<div id="versionNeededRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="versionNeededTrue" name="versionNeeded" value="true">
 						<label for="versionNeededTrue">true</label>
 						<input type="radio" id="versionNeededFalse" name="versionNeeded" value="false">
@@ -355,7 +355,7 @@ class FhirTerminologyGeneratorPanel {
 				</div>
 				<div id="valueSetDiv" style="display: none">
 					<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
-					<div class="radiogroup">
+					<div id="immutableRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="immutableTrue" name="immutable" value="true">
 						<label for="immutableTrue">true</label>
 						<input type="radio" id="immutableFalse" name="immutable" value="false">

@@ -10,7 +10,9 @@
 		const test = document.getElementById("test");
 		test.innerHTML = JSON.stringify(previousState);
 
+		// /////////////////////////////////////////////////
 		// Restore the HTML content from the previous state.
+		// /////////////////////////////////////////////////
 		// Terminology instance type.
 		if (previousState.terminologyInstance === "CodeSystem") {
 			document.getElementById('codeSystem').checked = "true";
@@ -21,17 +23,27 @@
 			document.getElementById('codeSystemDiv').style.display = "none";
 			document.getElementById('valueSetDiv').style.display = "block";
 		}
+
 		// Common div.
 		// Set textual input values.
 		setTextualInputValues(commonDiv, previousState);
-		// status RadioGroup.
-		for (let i = 0; i < statusRadioGroupDiv.childNodes.length; i++) {
-			let element = statusRadioGroupDiv.childNodes[i];
-			if (element.type === "radio" && previousState[element.name] === element.value) {
-				element.checked = "true";
-				break;
-			}
-		}
+		// Set radiogroups as checked.
+		setRadioGroupsAsChecked(statusRadioGroupDiv, previousState);
+		setRadioGroupsAsChecked(experimentalRadioGroupDiv, previousState);
+
+		// CodeSystem div.
+		// Set textual input values.
+		setTextualInputValues(codeSystemDiv, previousState);
+		// Set radiogroups as checked.
+		setRadioGroupsAsChecked(contentRadioGroupDiv, previousState);
+		setRadioGroupsAsChecked(caseSensitiveRadioGroupDiv, previousState);
+		setRadioGroupsAsChecked(hierarchyMeaningRadioGroupDiv, previousState);
+		setRadioGroupsAsChecked(compositionalRadioGroupDiv, previousState);
+		setRadioGroupsAsChecked(versionNeededRadioGroupDiv, previousState);
+
+		// ValueSet div.
+		// Set radiogroups as checked.
+		setRadioGroupsAsChecked(immutableRadioGroupDiv, previousState);
 
 	}
 
@@ -186,6 +198,18 @@ function setTextualInputValues(div, previousState) {
 		let element = div.childNodes[i];
 		if (element.type === "text" || element.type === "textarea") {
 			element.value = previousState[element.id] ? previousState[element.id] : null;
+		}
+	}
+}
+
+// Set radiogroups as checked.
+function setRadioGroupsAsChecked(div, previousState) {
+
+	for (let i = 0; i < div.childNodes.length; i++) {
+		let element = div.childNodes[i];
+		if (element.type === "radio" && previousState[element.name] === element.value) {
+			element.checked = "true";
+			break;
 		}
 	}
 }
