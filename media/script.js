@@ -6,6 +6,7 @@
 	// Is there a previous state to be used?
 	const previousState = vscode.getState();
 	if (previousState) {
+
 		// TODO: debug.
 		const test = document.getElementById("test");
 		test.innerHTML = JSON.stringify(previousState);
@@ -13,6 +14,7 @@
 		// /////////////////////////////////////////////////
 		// Restore the HTML content from the previous state.
 		// /////////////////////////////////////////////////
+
 		// Terminology instance type.
 		if (previousState.terminologyInstance === "CodeSystem") {
 			document.getElementById('codeSystem').checked = "true";
@@ -25,25 +27,15 @@
 		}
 
 		// Common div.
-		// Set textual input values.
 		setTextualInputValues(commonDiv, previousState);
-		// Set radiobutton as checked.
-		setRadioButtonAsChecked(statusRadioGroupDiv, previousState);
-		setRadioButtonAsChecked(experimentalRadioGroupDiv, previousState);
+		setRadioGroupValues(commonDiv, previousState);
 
 		// CodeSystem div.
-		// Set textual input values.
 		setTextualInputValues(codeSystemDiv, previousState);
-		// Set radiobutton as checked.
-		setRadioButtonAsChecked(contentRadioGroupDiv, previousState);
-		setRadioButtonAsChecked(caseSensitiveRadioGroupDiv, previousState);
-		setRadioButtonAsChecked(hierarchyMeaningRadioGroupDiv, previousState);
-		setRadioButtonAsChecked(compositionalRadioGroupDiv, previousState);
-		setRadioButtonAsChecked(versionNeededRadioGroupDiv, previousState);
+		setRadioGroupValues(codeSystemDiv, previousState);
 
 		// ValueSet div.
-		// Set radiobutton as checked.
-		setRadioButtonAsChecked(immutableRadioGroupDiv, previousState);
+		setRadioGroupValues(valueSetDiv, previousState);
 
 	}
 
@@ -64,55 +56,37 @@
 	// Clear the selection for the 'experimental' radiogroup.
 	const clearExperimentalButton = document.getElementById('clearExperimental');
 	clearExperimentalButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('experimental');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('experimental');
 	});
 
 	// Clear the selection for the 'caseSensitive' radiogroup.
 	const clearCaseSensitiveButton = document.getElementById('clearCaseSensitive');
 	clearCaseSensitiveButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('caseSensitive');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('caseSensitive');
 	});
 
 	// Clear the selection for the 'hierarchyMeaning' radiogroup.
 	const clearHierarchyMeaningButton = document.getElementById('clearHierarchyMeaning');
 	clearHierarchyMeaningButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('hierarchyMeaning');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('hierarchyMeaning');
 	});
 
 	// Clear the selection for the 'compositional' radiogroup.
 	const clearCompositionalButton = document.getElementById('clearCompositional');
 	clearCompositionalButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('compositional');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('compositional');
 	});
 
 	// Clear the selection for the 'versionNeeded' radiogroup.
 	const clearVersionNeededButton = document.getElementById('clearVersionNeeded');
 	clearVersionNeededButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('versionNeeded');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('versionNeeded');
 	});
 
 	// Clear the selection for the 'immutable' radiogroup.
 	const clearImmutableButton = document.getElementById('clearImmutable');
 	clearImmutableButton.addEventListener('click', () => {
-		const radioButtons = document.getElementsByName('immutable');
-		for (const radioButton of radioButtons) {
-			radioButton.checked = false;
-		}
+		uncheckRadioButtons('immutable');
 	});
 
 	// Generate a JSON object with the input values and send it to the extension.
@@ -125,26 +99,19 @@
 		// //////////////////////////////
 		// Retrieve values from elements.
 		// //////////////////////////////
+
 		inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
 
 		// Common div.
-		// Retrieve textual input values.
 		getTextualInputValues(commonDiv, inputData);
-		getCheckedRadioButton(statusRadioGroupDiv, inputData);
-		getCheckedRadioButton(experimentalRadioGroupDiv, inputData);
+		getRadioGroupValues(commonDiv, inputData);
 
 		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
-			// Retrieve textual input values.
 			getTextualInputValues(codeSystemDiv, inputData);
-			getCheckedRadioButton(contentRadioGroupDiv, inputData);
-			getCheckedRadioButton(caseSensitiveRadioGroupDiv, inputData);
-			getCheckedRadioButton(hierarchyMeaningRadioGroupDiv, inputData);
-			getCheckedRadioButton(compositionalRadioGroupDiv, inputData);
-			getCheckedRadioButton(versionNeededRadioGroupDiv, inputData);
+			getRadioGroupValues(codeSystemDiv, inputData);
 		} else {  // ValueSet div.
-			// Retrieve textual input values.
 			getTextualInputValues(valueSetDiv, inputData);
-			getCheckedRadioButton(immutableRadioGroupDiv, inputData);
+			getRadioGroupValues(valueSetDiv, inputData);
 		}
 
 		// Persist the input data for (possible) later use.
@@ -190,6 +157,28 @@ function setTextualInputValues(div, previousState) {
 	}
 }
 
+// Get radiogroup values.
+function getRadioGroupValues(div, inputData) {
+
+	for (let i = 0; i < div.childNodes.length; i++) {
+		let element = div.childNodes[i];
+		if (element.className === "radiogroup") {
+			getCheckedRadioButton(element, inputData);
+		}
+	}
+}
+
+// Set radiogroup values.
+function setRadioGroupValues(div, previousState) {
+
+	for (let i = 0; i < div.childNodes.length; i++) {
+		let element = div.childNodes[i];
+		if (element.className === "radiogroup") {
+			setRadioButtonAsChecked(element, previousState);
+		}
+	}
+}
+
 // Get checked radiobutton.
 function getCheckedRadioButton(radioGroupDiv, inputData) {
 
@@ -211,5 +200,14 @@ function setRadioButtonAsChecked(div, previousState) {
 			element.checked = "true";
 			break;
 		}
+	}
+}
+
+// Uncheck radiobuttons of a radiogroup.
+function uncheckRadioButtons(elementName) {
+
+	const radioButtons = document.getElementsByName(elementName);
+	for (const radioButton of radioButtons) {
+		radioButton.checked = false;
 	}
 }
