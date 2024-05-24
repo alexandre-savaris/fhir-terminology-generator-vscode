@@ -27,23 +27,23 @@
 		// Common div.
 		// Set textual input values.
 		setTextualInputValues(commonDiv, previousState);
-		// Set radiogroups as checked.
-		setRadioGroupsAsChecked(statusRadioGroupDiv, previousState);
-		setRadioGroupsAsChecked(experimentalRadioGroupDiv, previousState);
+		// Set radiobutton as checked.
+		setRadioButtonAsChecked(statusRadioGroupDiv, previousState);
+		setRadioButtonAsChecked(experimentalRadioGroupDiv, previousState);
 
 		// CodeSystem div.
 		// Set textual input values.
 		setTextualInputValues(codeSystemDiv, previousState);
-		// Set radiogroups as checked.
-		setRadioGroupsAsChecked(contentRadioGroupDiv, previousState);
-		setRadioGroupsAsChecked(caseSensitiveRadioGroupDiv, previousState);
-		setRadioGroupsAsChecked(hierarchyMeaningRadioGroupDiv, previousState);
-		setRadioGroupsAsChecked(compositionalRadioGroupDiv, previousState);
-		setRadioGroupsAsChecked(versionNeededRadioGroupDiv, previousState);
+		// Set radiobutton as checked.
+		setRadioButtonAsChecked(contentRadioGroupDiv, previousState);
+		setRadioButtonAsChecked(caseSensitiveRadioGroupDiv, previousState);
+		setRadioButtonAsChecked(hierarchyMeaningRadioGroupDiv, previousState);
+		setRadioButtonAsChecked(compositionalRadioGroupDiv, previousState);
+		setRadioButtonAsChecked(versionNeededRadioGroupDiv, previousState);
 
 		// ValueSet div.
-		// Set radiogroups as checked.
-		setRadioGroupsAsChecked(immutableRadioGroupDiv, previousState);
+		// Set radiobutton as checked.
+		setRadioButtonAsChecked(immutableRadioGroupDiv, previousState);
 
 	}
 
@@ -130,33 +130,21 @@
 		// Common div.
 		// Retrieve textual input values.
 		getTextualInputValues(commonDiv, inputData);
-		inputData['status'] = document.querySelector('input[name="status"]:checked').value;
-		if (document.querySelector('input[name="experimental"]:checked') !== null) {
-			inputData['experimental'] = document.querySelector('input[name="experimental"]:checked').value;
-		}
+		getCheckedRadioButton(statusRadioGroupDiv, inputData);
+		getCheckedRadioButton(experimentalRadioGroupDiv, inputData);
 
 		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
 			// Retrieve textual input values.
 			getTextualInputValues(codeSystemDiv, inputData);
-			inputData['content'] = document.querySelector('input[name="content"]:checked').value;
-			if (document.querySelector('input[name="caseSensitive"]:checked') !== null) {
-				inputData['caseSensitive'] = document.querySelector('input[name="caseSensitive"]:checked').value;
-			}
-			if (document.querySelector('input[name="hierarchyMeaning"]:checked') !== null) {
-				inputData['hierarchyMeaning'] = document.querySelector('input[name="hierarchyMeaning"]:checked').value;
-			}
-			if (document.querySelector('input[name="compositional"]:checked') !== null) {
-				inputData['compositional'] = document.querySelector('input[name="compositional"]:checked').value;
-			}
-			if (document.querySelector('input[name="versionNeeded"]:checked') !== null) {
-				inputData['versionNeeded'] = document.querySelector('input[name="versionNeeded"]:checked').value;
-			}
+			getCheckedRadioButton(contentRadioGroupDiv, inputData);
+			getCheckedRadioButton(caseSensitiveRadioGroupDiv, inputData);
+			getCheckedRadioButton(hierarchyMeaningRadioGroupDiv, inputData);
+			getCheckedRadioButton(compositionalRadioGroupDiv, inputData);
+			getCheckedRadioButton(versionNeededRadioGroupDiv, inputData);
 		} else {  // ValueSet div.
 			// Retrieve textual input values.
 			getTextualInputValues(valueSetDiv, inputData);
-			if (document.querySelector('input[name="immutable"]:checked') !== null) {
-				inputData['immutable'] = document.querySelector('input[name="immutable"]:checked').value;
-			}
+			getCheckedRadioButton(immutableRadioGroupDiv, inputData);
 		}
 
 		// Persist the input data for (possible) later use.
@@ -202,8 +190,20 @@ function setTextualInputValues(div, previousState) {
 	}
 }
 
-// Set radiogroups as checked.
-function setRadioGroupsAsChecked(div, previousState) {
+// Get checked radiobutton.
+function getCheckedRadioButton(radioGroupDiv, inputData) {
+
+	for (let i = 0; i < radioGroupDiv.childNodes.length; i++) {
+		let element = radioGroupDiv.childNodes[i];
+		if (element.type === "radio" && element.checked) {
+			inputData[element.name] = element.value;
+			break;
+		}
+	}
+}
+
+// Set radiobutton as checked.
+function setRadioButtonAsChecked(div, previousState) {
 
 	for (let i = 0; i < div.childNodes.length; i++) {
 		let element = div.childNodes[i];
