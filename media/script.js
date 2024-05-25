@@ -123,10 +123,10 @@
 		test.innerHTML = jsonData;
 
 		// Send the input data to the extension.
-		//vscode.postMessage({
-		//	command: document.querySelector('input[name="terminologyInstance"]:checked').value,
-		//	text: jsonData
-		//});
+		vscode.postMessage({
+			command: document.querySelector('input[name="terminologyInstance"]:checked').value,
+			text: jsonData
+		});
 
 	});
 

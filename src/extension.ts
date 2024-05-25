@@ -2,7 +2,6 @@
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
 // For CSV parsing.
-// TODO: CSV parsing.
 import * as csv from '@fast-csv/parse';
 // For rendering templates.
 import Mustache from 'mustache';
@@ -15,6 +14,21 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fhir-terminology-generator-vscode.start', () => {
+
+			// Parse the CSV content from the opened document (if any).
+			const activeTextEditor = vscode.window.activeTextEditor;
+			if (activeTextEditor) {
+				const documentText = activeTextEditor.document.getText();
+				const stream = csv.parse({ delimiter: ';', headers: true })
+					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
+					.on('data', row => vscode.window.setStatusBarMessage(row))
+					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
+				stream.write(documentText);
+				stream.end();
+			} else {
+				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
+				return;
+			}
 
 			FhirTerminologyGeneratorPanel.createOrShow(context.extensionUri);
 		})
@@ -116,28 +130,26 @@ class FhirTerminologyGeneratorPanel {
 			message => {
 				switch (message.command) {
 					case 'CodeSystem':
-						const commonTemplate = this._fillCodeSystemTemplate(message.text);
+						const codeSystemTemplate = this._fillCodeSystemTemplate(message.text);
 						// Create a new document with the terminology's contet.
 						vscode.workspace.openTextDocument({
-							//content: message.text,
-							content: commonTemplate,
-							language: "json"
+							content: codeSystemTemplate,
+							language: 'json'
 						}).then(newDocument => {
 							vscode.window.showTextDocument(newDocument);
 						});
-						vscode.window.setStatusBarMessage(message.text);
 						return;
 					case 'ValueSet':
+						const valueSetTemplate = this._fillValueSetTemplate(message.text);
 						// Create a new document with the terminology's contet.
 						vscode.workspace.openTextDocument({
-							content: message.text,
-							language: "json"
+							content: valueSetTemplate,
+							language: 'json'
 						}).then(newDocument => {
 							vscode.window.showTextDocument(newDocument);
 						});
-						vscode.window.setStatusBarMessage(message.text);
 						return;
-					}
+				}
 			},
 			null,
 			this._disposables
@@ -183,6 +195,23 @@ class FhirTerminologyGeneratorPanel {
 
 		// Fill the template with the input data.
 		const filledTemplate = Mustache.render(codeSystemTemplate, JSON.parse(content), { common: commonTemplate });
+
+		return filledTemplate;
+	}
+
+	// Fill the ValueSet template with the input data.
+	private _fillValueSetTemplate(content: string) {
+
+		// Load the common template from disk.
+		const commonTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'common.mustache');
+		const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
+
+		// Load the ValueSet template from disk.
+		const valueSetTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'ValueSet.mustache');
+		const valueSetTemplate = fs.readFileSync(valueSetTemplatePath.fsPath, { encoding: 'utf8' });
+
+		// Fill the template with the input data.
+		const filledTemplate = Mustache.render(valueSetTemplate, JSON.parse(content), { common: commonTemplate });
 
 		return filledTemplate;
 	}
