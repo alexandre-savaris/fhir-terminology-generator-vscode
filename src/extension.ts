@@ -2,7 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
 // For CSV parsing.
-import * as csv from '@fast-csv/parse';
+import * as csvParse from '@fast-csv/parse';
+// For CSV to JSON conversion.
+import csvConv from 'csvtojson';
 // For rendering templates.
 import Mustache from 'mustache';
 // For template reading.
@@ -17,20 +19,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Parse the CSV content from the opened document (if any).
 			const activeTextEditor = vscode.window.activeTextEditor;
+			let originalCsv = '';
 			if (activeTextEditor) {
 				const documentText = activeTextEditor.document.getText();
-				const stream = csv.parse({ delimiter: ';', headers: true })
+				const stream = csvParse.parse({ delimiter: ';', headers: true, ignoreEmpty: true, trim: true })
 					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
 					.on('data', row => vscode.window.setStatusBarMessage(row))
 					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
 				stream.write(documentText);
 				stream.end();
+				// TODO: comment.
+				//const resultJson = csvConv().fromString(documentText);
+				originalCsv = documentText;
 			} else {
 				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
 				return;
 			}
 
-			FhirTerminologyGeneratorPanel.createOrShow(context.extensionUri);
+			// Create or show the Webview panel.
+			FhirTerminologyGeneratorPanel.createOrShow(context.extensionUri, originalCsv);
 		})
 	);
 
@@ -70,9 +77,11 @@ class FhirTerminologyGeneratorPanel {
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
+	// The original content from the CSV file.
+	private readonly _originalCsv: String;
 
 	// Create the panel or show the current one (if it already exists).
-	public static createOrShow(extensionUri: vscode.Uri) {
+	public static createOrShow(extensionUri: vscode.Uri, originalCsv: String = '') {
 
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
@@ -92,7 +101,7 @@ class FhirTerminologyGeneratorPanel {
 			getWebviewOptions(extensionUri)
 		);
 
-		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri);
+		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri, originalCsv);
 	}
 
 	// Revive a panel.
@@ -102,13 +111,20 @@ class FhirTerminologyGeneratorPanel {
 	}
 
 	// The FhirTerminologyGeneratorPanel class constructor.
-	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, originalCsv: String = '') {
 
 		this._panel = panel;
 		this._extensionUri = extensionUri;
+		this._originalCsv = originalCsv;
 
 		// Set the Webview's initial HTML content.
 		this._update();
+
+		// Send the original CSV content to the Webview.
+		this._panel.webview.postMessage({
+			command: 'csv',
+			text: originalCsv
+		});
 
 		// Listen for when the panel is disposed.
 		// This happens when the user closes the panel or when the panel is closed programmatically.
@@ -254,7 +270,7 @@ class FhirTerminologyGeneratorPanel {
 					<label for="valueSet">ValueSet</label>
 				</div>
 				<hr />
-				<div id="commonDiv">
+				<div id="commonDiv" style="display: block;">
 					<label for="url">url (canonical identifier for this instance):</label><br />
 					<input type="text" id="url" name="url" size="100" /><br />
 					<hr />
@@ -316,7 +332,7 @@ class FhirTerminologyGeneratorPanel {
 					<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
 					<hr />
 				</div>
-				<div id="codeSystemDiv">
+				<div id="codeSystemDiv" style="display: block;">
 					<label for="content">content (the extent of the content of the code system):</label>
 					<div id="contentRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="contentNotPresent" name="content" value="not-present" checked>
@@ -382,7 +398,7 @@ class FhirTerminologyGeneratorPanel {
 					<input type="text" id="count" name="count" size="5" /><br />
 					<hr />
 				</div>
-				<div id="valueSetDiv" style="display: none">
+				<div id="valueSetDiv" style="display: none;">
 					<label for="immutable">immutable (indicates whether or not any change to the content logical definition may occur):</label>
 					<div id="immutableRadioGroupDiv" class="radiogroup">
 						<input type="radio" id="immutableTrue" name="immutable" value="true">
@@ -391,6 +407,17 @@ class FhirTerminologyGeneratorPanel {
 						<label for="immutableFalse">false</label>
 						<button type="button" id="clearImmutable">Clear</button>
 					</div>
+					<hr />
+					<label for="system">system (an absolute URI which is the code system from which the selected codes come from):</label><br />
+					<input type="text" id="system" name="system" size="100" /><br />
+					<hr />
+				</div>
+				<div id="contentCsvJsonDiv">
+					<label for="csv">Original CSV content:</label><br />
+					<textarea id="csv" name="csv" rows="10" cols="100"></textarea><br />
+					<hr />
+					<label for="concepts">concepts (concepts that are in the instance):</label><br />
+					<textarea id="concepts" name="concepts" rows="10" cols="100"></textarea><br />
 					<hr />
 				</div>
 				<div>

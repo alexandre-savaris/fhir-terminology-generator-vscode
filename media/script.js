@@ -1,5 +1,15 @@
 (function() {
 
+	// Handle messages received from the extension.
+	window.addEventListener('message', event => {
+		const message = event.data; // The JSON data our extension sent.
+		switch (message.command) {
+			case 'csv':
+				document.getElementById("csv").value = message.text;
+				break;
+		}
+	});
+
 	// Access point to the VSCode API.
 	const vscode = acquireVsCodeApi();
 
@@ -35,8 +45,19 @@
 		setRadioGroupValues(codeSystemDiv, previousState);
 
 		// ValueSet div.
+		setTextualInputValues(valueSetDiv, previousState);
 		setRadioGroupValues(valueSetDiv, previousState);
 
+		// CSV and JSON content div.
+		setTextualInputValues(contentCsvJsonDiv, previousState);
+
+	} else {
+
+		// Reinforce the HTML state to be shown.
+		document.getElementById('codeSystem').checked = "true";
+		document.getElementById('codeSystemDiv').style.display = "block";
+		document.getElementById('valueSetDiv').style.display = "none";
+		
 	}
 
 	// Show/hide elements according to the selection.
@@ -105,6 +126,9 @@
 		// Common div.
 		getTextualInputValues(commonDiv, inputData);
 		getRadioGroupValues(commonDiv, inputData);
+
+		// CSV and JSON content div.
+		getTextualInputValues(contentCsvJsonDiv, inputData);
 
 		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
 			getTextualInputValues(codeSystemDiv, inputData);
