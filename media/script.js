@@ -4,8 +4,8 @@
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent.
 		switch (message.command) {
-			case 'csv':
-				document.getElementById("csv").value = message.text;
+			case 'concepts':
+				document.getElementById("concepts").value = message.text;
 				break;
 		}
 	});
@@ -49,7 +49,7 @@
 		setRadioGroupValues(valueSetDiv, previousState);
 
 		// CSV and JSON content div.
-		setTextualInputValues(contentCsvJsonDiv, previousState);
+		setTextualInputValues(conceptsDiv, previousState);
 
 	} else {
 
@@ -128,7 +128,7 @@
 		getRadioGroupValues(commonDiv, inputData);
 
 		// CSV and JSON content div.
-		getTextualInputValues(contentCsvJsonDiv, inputData);
+		getTextualInputValues(conceptsDiv, inputData);
 
 		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
 			getTextualInputValues(codeSystemDiv, inputData);

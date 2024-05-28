@@ -19,25 +19,40 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Parse the CSV content from the opened document (if any).
 			const activeTextEditor = vscode.window.activeTextEditor;
-			let originalCsv = '';
+
+			// TODO: comments.
 			if (activeTextEditor) {
+
 				const documentText = activeTextEditor.document.getText();
-				const stream = csvParse.parse({ delimiter: ';', headers: true, ignoreEmpty: true, trim: true })
-					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
-					.on('data', row => vscode.window.setStatusBarMessage(row))
-					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
-				stream.write(documentText);
-				stream.end();
-				// TODO: comment.
-				//const resultJson = csvConv().fromString(documentText);
-				originalCsv = documentText;
+
+				// TODO: comments.
+				let concepts: { code: string, display: string }[] = [];
+				(async () => {
+					await csvConv({ delimiter: 'auto', ignoreEmpty: true, headers: ["code", "display"] })
+							.fromString(documentText)
+							.on('data', (data) => {
+								const jsonObj = JSON.parse(data.toString());
+								concepts.push(jsonObj);
+								vscode.window.setStatusBarMessage(data.toString());
+							})
+							.on('error', (err) => {
+								vscode.window.showErrorMessage(err.message);
+								return;
+							})
+							.on('done', (err) => {
+								if (err) {
+									vscode.window.showErrorMessage(err.message);
+									return;
+								} else {
+									FhirTerminologyGeneratorPanel.createOrShow(
+										context.extensionUri, JSON.stringify(concepts));
+									}
+							});
+				})();
 			} else {
 				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
 				return;
 			}
-
-			// Create or show the Webview panel.
-			FhirTerminologyGeneratorPanel.createOrShow(context.extensionUri, originalCsv);
 		})
 	);
 
@@ -77,11 +92,11 @@ class FhirTerminologyGeneratorPanel {
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
-	// The original content from the CSV file.
-	private readonly _originalCsv: String;
+	// Concepts extracted from the orginal CSV file.
+	private readonly _concepts: String;
 
 	// Create the panel or show the current one (if it already exists).
-	public static createOrShow(extensionUri: vscode.Uri, originalCsv: String = '') {
+	public static createOrShow(extensionUri: vscode.Uri, concepts: String = '') {
 
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
@@ -101,29 +116,32 @@ class FhirTerminologyGeneratorPanel {
 			getWebviewOptions(extensionUri)
 		);
 
-		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri, originalCsv);
+		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(
+			panel, extensionUri, concepts);
 	}
 
 	// Revive a panel.
 	public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
 
-		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(panel, extensionUri);
+		FhirTerminologyGeneratorPanel.currentPanel = new FhirTerminologyGeneratorPanel(
+			panel, extensionUri);
 	}
 
 	// The FhirTerminologyGeneratorPanel class constructor.
-	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, originalCsv: String = '') {
+	private constructor(
+		panel: vscode.WebviewPanel, extensionUri: vscode.Uri, concepts: String = '') {
 
 		this._panel = panel;
 		this._extensionUri = extensionUri;
-		this._originalCsv = originalCsv;
+		this._concepts = concepts;
 
 		// Set the Webview's initial HTML content.
 		this._update();
 
 		// Send the original CSV content to the Webview.
 		this._panel.webview.postMessage({
-			command: 'csv',
-			text: originalCsv
+			command: 'concepts',
+			text: this._concepts
 		});
 
 		// Listen for when the panel is disposed.
@@ -412,10 +430,7 @@ class FhirTerminologyGeneratorPanel {
 					<input type="text" id="system" name="system" size="100" /><br />
 					<hr />
 				</div>
-				<div id="contentCsvJsonDiv">
-					<label for="csv">Original CSV content:</label><br />
-					<textarea id="csv" name="csv" rows="10" cols="100"></textarea><br />
-					<hr />
+				<div id="conceptsDiv">
 					<label for="concepts">concepts (concepts that are in the instance):</label><br />
 					<textarea id="concepts" name="concepts" rows="10" cols="100"></textarea><br />
 					<hr />
