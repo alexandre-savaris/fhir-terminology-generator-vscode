@@ -3,7 +3,7 @@
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
 // For CSV parsing.
-import * as csv from '@fast-csv/parse';
+//import * as csv from '@fast-csv/parse';
 // For rendering templates.
 import Mustache from 'mustache';
 // For template reading.
@@ -27,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
 			if (activeTextEditor) {
 				const documentText = activeTextEditor.document.getText();
 
-				const stream = csv.parse({ delimiter: ';', headers: true })
-					.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
-					.on('data', row => vscode.window.setStatusBarMessage(row))
-					.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
-				stream.write(documentText);
-				stream.end();
+				//const stream = csv.parse({ delimiter: ';', headers: true })
+				//	.on('error', error => { vscode.window.setStatusBarMessage(error.message); return; })
+				//	.on('data', row => vscode.window.setStatusBarMessage(row))
+				//	.on('end', (rowCount: number) => vscode.window.setStatusBarMessage(`Parsed ${rowCount} rows.`));
+				//stream.write(documentText);
+				//stream.end();
 			} else {
 				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
 				return;

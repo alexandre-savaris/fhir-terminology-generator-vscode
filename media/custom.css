@@ -1,0 +1,13 @@
+.radiogroup {
+    display: inline-grid;
+    grid-auto-flow: dense;
+    align-items: center;
+}
+
+.radiogroup input[type="radio"] {
+    margin-right: 5px;
+}
+  
+.radiogroup label, button {
+    grid-column: 2;
+}

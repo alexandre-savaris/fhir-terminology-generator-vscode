@@ -114,6 +114,25 @@
 	const generateButton = document.getElementById('generate');
 	generateButton.addEventListener('click', () => {
 
+
+
+
+		// Validate fields with filling patterns.
+		const element = document.getElementById('date');
+		const test2 = document.getElementById("test");
+		if (element.value.trim().length > 0) {
+			test2.innerHTML = 'YYY';
+			//const re = new RegExp("([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]{1,9})?)?)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)?)?)?");
+			const re = new RegExp(element.pattern);
+			test2.innerHTML = 'YYY';
+			if (!re.test(element.value.trim())) {
+				test2.innerHTML = 'ZZZ';
+				return;
+			}
+		}
+
+
+
 		// The object to be filled with the input data.
 		let inputData = {};
 

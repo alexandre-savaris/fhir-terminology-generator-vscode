@@ -1,8 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API.
 // Import the module and reference it with the alias vscode in your code below.
 import * as vscode from 'vscode';
-// For CSV parsing.
-import * as csvParse from '@fast-csv/parse';
 // For CSV to JSON conversion.
 import csvConv from 'csvtojson';
 // For rendering templates.
@@ -45,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
 									return;
 								} else {
 									FhirTerminologyGeneratorPanel.createOrShow(
-										context.extensionUri, JSON.stringify(concepts));
+										context.extensionUri, JSON.stringify(concepts, null, 4));
 									}
 							});
 				})();
@@ -258,9 +256,11 @@ class FhirTerminologyGeneratorPanel {
 		// Local path to CSS styles.
 		const styleResetPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css');
 		const stylesPathMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css');
+		const stylesCustomPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'custom.css');
 		// URI to load styles into the Webview.
 		const stylesResetUri = webview.asWebviewUri(styleResetPath);
 		const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
+		const stylesCustomUri = webview.asWebviewUri(stylesCustomPath);
 		// Use a nonce to only allow specific scripts to be run.
 		const nonce = getNonce();
 
@@ -276,6 +276,7 @@ class FhirTerminologyGeneratorPanel {
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<link href="${stylesResetUri}" rel="stylesheet">
 				<link href="${stylesMainUri}" rel="stylesheet">
+				<link href="${stylesCustomUri}" rel="stylesheet">
 				<title>FHIR® Terminology Generator - R5</title>
 			</head>
 			<body>
@@ -324,7 +325,7 @@ class FhirTerminologyGeneratorPanel {
 					<hr />
 					<!-- TODO: regexp -->
 					<label for="date">date (date of the last change (in the format YYYY, YYYY-MM, YYYY-MM-DD or YYYY-MM-DDThh:mm:ss+zz:zz)):</label><br />
-					<input type="text" id="date" name="date" size="50" /><br />
+					<input type="text" id="date" name="date" size="50" pattern="([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]{1,9})?)?)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)?)?)?"/><br />
 					<hr />
 					<label for="publisher">publisher (name of the publisher/steward (organization or individual)):</label><br />
 					<input type="text" id="publisher" name="publisher" size="100" /><br />
