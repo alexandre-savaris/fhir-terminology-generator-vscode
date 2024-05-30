@@ -114,25 +114,6 @@
 	const generateButton = document.getElementById('generate');
 	generateButton.addEventListener('click', () => {
 
-
-
-
-		// Validate fields with filling patterns.
-		const element = document.getElementById('date');
-		const test2 = document.getElementById("test");
-		if (element.value.trim().length > 0) {
-			test2.innerHTML = 'YYY';
-			//const re = new RegExp("([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]{1,9})?)?)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)?)?)?");
-			const re = new RegExp(element.pattern);
-			test2.innerHTML = 'YYY';
-			if (!re.test(element.value.trim())) {
-				test2.innerHTML = 'ZZZ';
-				return;
-			}
-		}
-
-
-
 		// The object to be filled with the input data.
 		let inputData = {};
 
@@ -142,20 +123,53 @@
 
 		inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
 
+		let validationError = null;
+
 		// Common div.
-		getTextualInputValues(commonDiv, inputData);
+		validationError = getTextualInputValues(commonDiv, inputData);
+		if (validationError) {
+			vscode.postMessage({
+				command: 'validationError',
+				text: validationError
+			});
+			return;
+		}
 		getRadioGroupValues(commonDiv, inputData);
 
 		// CSV and JSON content div.
-		getTextualInputValues(conceptsDiv, inputData);
+		validationError = getTextualInputValues(conceptsDiv, inputData);
+		if (validationError) {
+			vscode.postMessage({
+				command: 'validationError',
+				text: validationError
+			});
+			return;
+		}
 
 		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
-			getTextualInputValues(codeSystemDiv, inputData);
+			validationError = getTextualInputValues(codeSystemDiv, inputData);
+			if (validationError) {
+				vscode.postMessage({
+					command: 'validationError',
+					text: validationError
+				});
+				return;
+			}
 			getRadioGroupValues(codeSystemDiv, inputData);
 		} else {  // ValueSet div.
-			getTextualInputValues(valueSetDiv, inputData);
+			validationError = getTextualInputValues(valueSetDiv, inputData);
+			if (validationError) {
+				vscode.postMessage({
+					command: 'validationError',
+					text: validationError
+				});
+				return;
+			}
 			getRadioGroupValues(valueSetDiv, inputData);
 		}
+
+		// Count the number of concepts.
+		inputData['count'] = JSON.parse(inputData.concepts).length;
 
 		// Persist the input data for (possible) later use.
 		vscode.setState(inputData);
@@ -178,15 +192,29 @@
 // Get textual input values.
 function getTextualInputValues(div, inputData) {
 
-	// Get textual input values - loop on the div's child nodes.
+	// Loop on the div's child nodes.
 	for (let i = 0; i < div.childNodes.length; i++) {
 		let element = div.childNodes[i];
 		if (element.type === "text" || element.type === "textarea") {
-			if (element.value.trim().length > 0) {
-				inputData[element.id] = element.value;
+			const elementValue = element.value.trim();
+			if (elementValue.length > 0) {
+				// Validate the element's content against its pattern (if available).
+				if (element.pattern) {
+					const re = new RegExp(element.pattern);
+					const replaced = elementValue.replace(re, '');
+					// If the resulting string after replacement has some content, the full matching failed.
+					if (replaced.length > 0) {
+						return "The value for the element '"
+							+ element.name
+							+ "' doesn't match the expected format. See the official HL7® FHIR® documentation for clarifications.";
+					}
+				}
+				inputData[element.id] = elementValue;
 			}
 		}
 	}
+
+	return null;
 }
 
 // Set textual input values.

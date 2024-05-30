@@ -181,6 +181,9 @@ class FhirTerminologyGeneratorPanel {
 							vscode.window.showTextDocument(newDocument);
 						});
 						return;
+					case 'validationError':
+						vscode.window.showErrorMessage(message.text);
+						return;
 				}
 			},
 			null,
@@ -291,16 +294,16 @@ class FhirTerminologyGeneratorPanel {
 				<hr />
 				<div id="commonDiv" style="display: block;">
 					<label for="url">url (canonical identifier for this instance):</label><br />
-					<input type="text" id="url" name="url" size="100" /><br />
+					<input type="text" id="url" name="url" size="100" pattern="\\S*"/><br />
 					<hr />
 					<label for="version">version (business version for this instance):</label><br />
-					<input type="text" id="version" name="version" size="50" /><br />
+					<input type="text" id="version" name="version" size="50" pattern="^[\\s\\S]+$"/><br />
 					<hr />
 					<label for="name">name (name for this instance (computer friendly)):</label><br />
-					<input type="text" id="name" name="name" size="100" /><br />
+					<input type="text" id="name" name="name" size="100" pattern="^[\\s\\S]+$"/><br />
 					<hr />
 					<label for="title">title (name for this instance (human friendly)):</label><br />
-					<input type="text" id="title" name="title" size="100" /><br />
+					<input type="text" id="title" name="title" size="100" pattern="^[\\s\\S]+$"/><br />
 					<hr />
 					<label for="status">status (the status of this instance):</label>
 					<div id="statusRadioGroupDiv" class="radiogroup">
@@ -323,32 +326,29 @@ class FhirTerminologyGeneratorPanel {
 						<button type="button" id="clearExperimental">Clear</button>
 					</div>
 					<hr />
-					<!-- TODO: regexp -->
 					<label for="date">date (date of the last change (in the format YYYY, YYYY-MM, YYYY-MM-DD or YYYY-MM-DDThh:mm:ss+zz:zz)):</label><br />
 					<input type="text" id="date" name="date" size="50" pattern="([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]{1,9})?)?)?(Z|(\\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)?)?)?"/><br />
 					<hr />
 					<label for="publisher">publisher (name of the publisher/steward (organization or individual)):</label><br />
-					<input type="text" id="publisher" name="publisher" size="100" /><br />
+					<input type="text" id="publisher" name="publisher" size="100" pattern="^[\\s\\S]+$"/><br />
 					<hr />
 					<label for="description">description (natural language description for the instance):</label><br />
-					<textarea id="description" name="description" rows="3" cols="100"></textarea><br />
+					<textarea id="description" name="description" rows="3" cols="100" pattern="^[\\s\\S]+$"></textarea><br />
 					<hr />
 					<label for="purpose">purpose (why this instance is defined):</label><br />
-					<textarea id="purpose" name="purpose" rows="3" cols="100"></textarea><br />
+					<textarea id="purpose" name="purpose" rows="3" cols="100" pattern="^[\\s\\S]+$"></textarea><br />
 					<hr />
 					<label for="copyright">copyright (use and/or publishing restrictions):</label><br />
-					<textarea id="copyright" name="copyright" rows="3" cols="100"></textarea><br />
+					<textarea id="copyright" name="copyright" rows="3" cols="100" pattern="^[\\s\\S]+$"></textarea><br />
 					<hr />
 					<label for="copyrightLabel">copyrightLabel (copyright holder and year(s)):</label><br />
-					<input type="text" id="copyrightLabel" name="copyrightLabel" size="100" /><br />
+					<input type="text" id="copyrightLabel" name="copyrightLabel" size="100" pattern="^[\\s\\S]+$"/><br />
 					<hr />
-					<!-- TODO: regexp -->
 					<label for="approvalDate">approvalDate (when the instance was approved by publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
-					<input type="text" id="approvalDate" name="approvalDate" size="50" /><br />
+					<input type="text" id="approvalDate" name="approvalDate" size="50" pattern="([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"/><br />
 					<hr />
-					<!-- TODO: regexp -->
 					<label for="lastReviewDate">lastReviewDate (when the instance was last reviewed by the publisher (in the format YYYY, YYYY-MM, or YYYY-MM-DD)):</label><br />
-					<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" /><br />
+					<input type="text" id="lastReviewDate" name="lastReviewDate" size="50" pattern="([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?"/><br />
 					<hr />
 				</div>
 				<div id="codeSystemDiv" style="display: block;">
@@ -376,7 +376,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="canonicalValueSet">valueSet (canonical reference to the value set with entire code system):</label><br />
-					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" /><br />
+					<input type="text" id="canonicalValueSet" name="canonicalValueSet" size="100" pattern="\\S*"/><br />
 					<hr />
 					<label for="hierarchyMeaning">hierarchyMeaning (the meaning of the hierarchy of concepts):</label>
 					<div id="hierarchyMeaningRadioGroupDiv" class="radiogroup">
@@ -410,11 +410,7 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="supplements">supplements (canonical URL of Code System this adds designations and properties to):</label><br />
-					<input type="text" id="supplements" name="supplements" size="100" /><br />
-					<hr />
-					<!-- TODO: regexp -->
-					<label for="count">count (total concepts in the code system):</label><br />
-					<input type="text" id="count" name="count" size="5" /><br />
+					<input type="text" id="supplements" name="supplements" size="100" pattern="\\S*"/><br />
 					<hr />
 				</div>
 				<div id="valueSetDiv" style="display: none;">
@@ -428,12 +424,12 @@ class FhirTerminologyGeneratorPanel {
 					</div>
 					<hr />
 					<label for="system">system (an absolute URI which is the code system from which the selected codes come from):</label><br />
-					<input type="text" id="system" name="system" size="100" /><br />
+					<input type="text" id="system" name="system" size="100" pattern="\\S*"/><br />
 					<hr />
 				</div>
 				<div id="conceptsDiv">
 					<label for="concepts">concepts (concepts that are in the instance):</label><br />
-					<textarea id="concepts" name="concepts" rows="10" cols="100"></textarea><br />
+					<textarea id="concepts" name="concepts" rows="10" cols="100" readonly></textarea><br />
 					<hr />
 				</div>
 				<div>
