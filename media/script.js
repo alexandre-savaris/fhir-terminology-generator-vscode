@@ -1,5 +1,8 @@
 (function() {
 
+	// TODO: debug.
+	const test = document.getElementById("test");
+
 	// Handle messages received from the extension.
 	window.addEventListener('message', event => {
 		const message = event.data; // The JSON data our extension sent.
@@ -17,8 +20,6 @@
 	const previousState = vscode.getState();
 	if (previousState) {
 
-		// TODO: debug.
-		const test = document.getElementById("test");
 		test.innerHTML = JSON.stringify(previousState);
 
 		// /////////////////////////////////////////////////
@@ -117,82 +118,30 @@
 		// The object to be filled with the input data.
 		let inputData = {};
 
-		// //////////////////////////////
-		// Retrieve values from elements.
-		// //////////////////////////////
+		// TODO: comment.
+		const validationError = setCurrentState(vscode, inputData);
 
-		inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
+		if (!validationError) {
 
-		let validationError = null;
-
-		// Common div.
-		validationError = getTextualInputValues(commonDiv, inputData);
-		if (validationError) {
+			let jsonData = JSON.stringify(inputData);
+			// TODO: debug.
+			const test = document.getElementById("test");
+			test.innerHTML = jsonData;
+	
+			// Send the input data to the extension.
 			vscode.postMessage({
-				command: 'validationError',
-				text: validationError
+				command: document.querySelector('input[name="terminologyInstance"]:checked').value,
+				text: jsonData
 			});
-			return;
+
 		}
-		getRadioGroupValues(commonDiv, inputData);
-
-		// CSV and JSON content div.
-		validationError = getTextualInputValues(conceptsDiv, inputData);
-		if (validationError) {
-			vscode.postMessage({
-				command: 'validationError',
-				text: validationError
-			});
-			return;
-		}
-
-		if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
-			validationError = getTextualInputValues(codeSystemDiv, inputData);
-			if (validationError) {
-				vscode.postMessage({
-					command: 'validationError',
-					text: validationError
-				});
-				return;
-			}
-			getRadioGroupValues(codeSystemDiv, inputData);
-		} else {  // ValueSet div.
-			validationError = getTextualInputValues(valueSetDiv, inputData);
-			if (validationError) {
-				vscode.postMessage({
-					command: 'validationError',
-					text: validationError
-				});
-				return;
-			}
-			getRadioGroupValues(valueSetDiv, inputData);
-		}
-
-		// Count the number of concepts.
-		inputData['count'] = JSON.parse(inputData.concepts).length;
-
-		// Persist the input data for (possible) later use.
-		vscode.setState(inputData);
-
-		// TODO: debug.
-		let jsonData = JSON.stringify(inputData);
-		const test = document.getElementById("test");
-		test.innerHTML = jsonData;
-
-		// Send the input data to the extension.
-		vscode.postMessage({
-			command: document.querySelector('input[name="terminologyInstance"]:checked').value,
-			text: jsonData
-		});
 
 	});
 
 }());
 
 // Get textual input values.
-function getTextualInputValues(div, inputData) {
-
-	let test = document.getElementById("test");
+function getTextualInputValues(div, inputData, generateButtonWasClicked = true) {
 
 	// Loop on the div's child nodes.
 	for (let i = 0; i < div.childNodes.length; i++) {
@@ -200,11 +149,10 @@ function getTextualInputValues(div, inputData) {
 		if (element.type === "text" || element.type === "textarea") {
 			const elementValue = element.value.trim();
 			if (elementValue.length > 0) {
-				// Validate the element's content against its pattern (if available).
-				if (element.pattern) {
+				// If the 'Generate' button was clicked, Validate the element's content against its pattern (if available).
+				if (generateButtonWasClicked && element.pattern) {
 					const re = new RegExp(element.pattern);
 					const replaced = elementValue.replace(re, '');
-					test.innerHTML = replaced;
 					// If the resulting string after replacement has some content, the full matching has failed.
 					if (replaced.length > 0) {
 						return "The value for the element '"
@@ -284,4 +232,67 @@ function uncheckRadioButtons(elementName) {
 	for (const radioButton of radioButtons) {
 		radioButton.checked = false;
 	}
+}
+
+// TODO: comments.
+function setCurrentState(vscode, inputData, generateButtonWasClicked = true) {
+
+	// //////////////////////////////
+	// Retrieve values from elements.
+	// //////////////////////////////
+	
+	inputData['terminologyInstance'] = document.querySelector('input[name="terminologyInstance"]:checked').value;
+	
+	let validationError = null;
+	
+	// Common div.
+	validationError = getTextualInputValues(commonDiv, inputData, generateButtonWasClicked);
+	if (validationError) {
+		vscode.postMessage({
+			command: 'validationError',
+			text: validationError
+		});
+		return validationError;
+	}
+	getRadioGroupValues(commonDiv, inputData);
+	
+	// CSV and JSON content div.
+	validationError = getTextualInputValues(conceptsDiv, inputData, generateButtonWasClicked);
+	if (validationError) {
+		vscode.postMessage({
+			command: 'validationError',
+			text: validationError
+		});
+		return validationError;
+	}
+	
+	if (document.getElementById('codeSystem').checked) {  // CodeSystem div.
+		validationError = getTextualInputValues(codeSystemDiv, inputData, generateButtonWasClicked);
+		if (validationError) {
+			vscode.postMessage({
+				command: 'validationError',
+				text: validationError
+			});
+			return validationError;
+		}
+		getRadioGroupValues(codeSystemDiv, inputData);
+	} else {  // ValueSet div.
+		validationError = getTextualInputValues(valueSetDiv, inputData, generateButtonWasClicked);
+		if (validationError) {
+			vscode.postMessage({
+				command: 'validationError',
+				text: validationError
+			});
+			return validationError;
+		}
+		getRadioGroupValues(valueSetDiv, inputData);
+	}
+	
+	// Count the number of concepts.
+	inputData['count'] = JSON.parse(inputData.concepts).length;
+	
+	// Persist the input data for (possible) later use.
+	vscode.setState(inputData);
+
+	return null;
 }
