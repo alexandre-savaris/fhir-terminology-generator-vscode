@@ -1,6 +1,11 @@
 body {
     font-family: sans-serif;
     font-weight: bold;
+    font-size: 120%;
+}
+
+.required {
+    color: red;
 }
 
 .radiogroup {
@@ -13,6 +18,10 @@ body {
     margin-right: 5px;
 }
   
-.radiogroup label, button {
+.radiogroup label {
     grid-column: 2;
+}
+
+.radiogroup button {
+    grid-column-start: span 2;
 }

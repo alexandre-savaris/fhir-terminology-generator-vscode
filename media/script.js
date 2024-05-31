@@ -192,6 +192,8 @@
 // Get textual input values.
 function getTextualInputValues(div, inputData) {
 
+	let test = document.getElementById("test");
+
 	// Loop on the div's child nodes.
 	for (let i = 0; i < div.childNodes.length; i++) {
 		let element = div.childNodes[i];
@@ -202,7 +204,8 @@ function getTextualInputValues(div, inputData) {
 				if (element.pattern) {
 					const re = new RegExp(element.pattern);
 					const replaced = elementValue.replace(re, '');
-					// If the resulting string after replacement has some content, the full matching failed.
+					test.innerHTML = replaced;
+					// If the resulting string after replacement has some content, the full matching has failed.
 					if (replaced.length > 0) {
 						return "The value for the element '"
 							+ element.name
