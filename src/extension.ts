@@ -3,10 +3,12 @@
 import * as vscode from 'vscode';
 // For CSV to JSON conversion.
 import csvConv from 'csvtojson';
-// For rendering templates.
-import Mustache from 'mustache';
 // For template reading.
 import * as fs from 'fs';
+// For rendering templates.
+import Mustache from 'mustache';
+// For validating JSON content using schemas.
+import Ajv from 'ajv';
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -15,23 +17,25 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('fhir-terminology-generator-vscode.start', () => {
 
-			// Parse the CSV content from the opened document (if any).
+			// If there is an active text editor, use it.
 			const activeTextEditor = vscode.window.activeTextEditor;
-
-			// TODO: comments.
 			if (activeTextEditor) {
 
+				// Retrieve content from the active text editor.
 				const documentText = activeTextEditor.document.getText();
 
-				// TODO: comments.
+				// Parse the (expected) CSV content from the opened document.
+				// Each line will be converted to a JSON object structured as follows:
 				let concepts: { code: string, display: string }[] = [];
+
+				// Forcing synchronous execution.
 				(async () => {
-					await csvConv({ delimiter: 'auto', ignoreEmpty: true, headers: ["code", "display"] })
+					// CSV parsing.
+					await csvConv({ delimiter: 'auto', ignoreEmpty: true, headers: ['code', 'display'] })
 							.fromString(documentText)
 							.on('data', (data) => {
 								const jsonObj = JSON.parse(data.toString());
 								concepts.push(jsonObj);
-								vscode.window.setStatusBarMessage(data.toString());
 							})
 							.on('error', (err) => {
 								vscode.window.showErrorMessage(err.message);
@@ -42,41 +46,31 @@ export function activate(context: vscode.ExtensionContext) {
 									vscode.window.showErrorMessage(err.message);
 									return;
 								} else {
+									vscode.window.setStatusBarMessage(
+										`Retrieved ${concepts.length} concepts from the CSV file.`);
 									FhirTerminologyGeneratorPanel.createOrShow(
 										context.extensionUri, JSON.stringify(concepts, null, 4));
 									}
 							});
 				})();
 			} else {
-				vscode.window.setStatusBarMessage('A valid CSV document must be opened to use the extension.');
+				vscode.window.showErrorMessage('A valid CSV document must be opened to use the extension.');
 				return;
 			}
 		})
 	);
 
+	// Following the extension specs.
 	if (vscode.window.registerWebviewPanelSerializer) {
 		// Make sure we register a serializer in activation event.
 		vscode.window.registerWebviewPanelSerializer(FhirTerminologyGeneratorPanel.viewType, {
 			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: any) {
-				// TODO: review 'console.log'.
-				console.log(`Got state: ${state}`);
-				// Reset the webview options so we use latest uri for `localResourceRoots`.
+				// Reset the Webview options so we use latest uri for `localResourceRoots`.
 				webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
 				FhirTerminologyGeneratorPanel.revive(webviewPanel, context.extensionUri);
 			}
 		});
 	}
-}
-
-// Return the Webview options.
-function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
-
-	return {
-		// Enable javascript in the webview.
-		enableScripts: true,
-		// And restrict the webview to only loading content from our extension's `media` directory.
-		localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')]
-	};
 }
 
 /**
@@ -91,11 +85,14 @@ class FhirTerminologyGeneratorPanel {
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
 	// Concepts extracted from the orginal CSV file.
-	private readonly _concepts: String;
+	private readonly _concepts: string;
+	// Base path for resources.
+	private readonly _resourceBasePath: string = 'resource';
 
 	// Create the panel or show the current one (if it already exists).
-	public static createOrShow(extensionUri: vscode.Uri, concepts: String = '') {
+	public static createOrShow(extensionUri: vscode.Uri, concepts: string = '') {
 
+		// The column where the Webview panel will be shown.
 		const column = vscode.window.activeTextEditor
 			? vscode.window.activeTextEditor.viewColumn
 			: undefined;
@@ -107,8 +104,7 @@ class FhirTerminologyGeneratorPanel {
 		}
 
 		// Otherwise, create a new panel.
-		const panel = vscode.window.createWebviewPanel(
-			FhirTerminologyGeneratorPanel.viewType,
+		const panel = vscode.window.createWebviewPanel(FhirTerminologyGeneratorPanel.viewType,
 			'FHIR® Terminology Generator - R5',
 			column || vscode.ViewColumn.One,
 			getWebviewOptions(extensionUri)
@@ -126,8 +122,7 @@ class FhirTerminologyGeneratorPanel {
 	}
 
 	// The FhirTerminologyGeneratorPanel class constructor.
-	private constructor(
-		panel: vscode.WebviewPanel, extensionUri: vscode.Uri, concepts: String = '') {
+	private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, concepts: string = '') {
 
 		this._panel = panel;
 		this._extensionUri = extensionUri;
@@ -161,27 +156,36 @@ class FhirTerminologyGeneratorPanel {
 		this._panel.webview.onDidReceiveMessage(
 			message => {
 				switch (message.command) {
-					case 'CodeSystem':
-						const codeSystemTemplate = this._fillCodeSystemTemplate(message.text);
-						// Create a new document with the terminology's contet.
-						vscode.workspace.openTextDocument({
-							content: codeSystemTemplate,
-							language: 'json'
-						}).then(newDocument => {
-							vscode.window.showTextDocument(newDocument);
-						});
+					// The 'Generate' button was clicked.
+					case 'Generate':
+						// Fill a template with data from the Webview panel.
+						const filledTemplate = this._fillTemplate(message.instanceType, message.text);
+						// Validate the filled template using the FHIR® JSON schema.
+						const { valid, errors } = this._validateFilledTemplate(filledTemplate);
+						if (!valid) {
+							if (errors) {
+								// 'errors' is an array of objects - concat their content.
+								const errorString = errors.map(function(error) {
+									return error.message + ' | ';
+								}).join("\n");
+								vscode.window.showErrorMessage('Validation errors: ' + errorString);
+							} else {
+								vscode.window.showErrorMessage(
+									'There was an unspecified error during the resulting JSON validation: '
+										+ filledTemplate);
+							}
+						} else {
+							// Create a new document with the terminology's instance content.
+							vscode.workspace.openTextDocument({
+								content: filledTemplate,
+								language: 'json'
+							}).then(newDocument => {
+								vscode.window.showTextDocument(newDocument);
+							});
+						}
 						return;
-					case 'ValueSet':
-						const valueSetTemplate = this._fillValueSetTemplate(message.text);
-						// Create a new document with the terminology's contet.
-						vscode.workspace.openTextDocument({
-							content: valueSetTemplate,
-							language: 'json'
-						}).then(newDocument => {
-							vscode.window.showTextDocument(newDocument);
-						});
-						return;
-					case 'validationError':
+					// There were errors in matching input values with expected patterns.
+					case 'inputValidationError':
 						vscode.window.showErrorMessage(message.text);
 						return;
 				}
@@ -196,7 +200,7 @@ class FhirTerminologyGeneratorPanel {
 
 		FhirTerminologyGeneratorPanel.currentPanel = undefined;
 
-		// Clean up our resources.
+		// Clean up resources.
 		this._panel.dispose();
 
 		while (this._disposables.length) {
@@ -207,6 +211,7 @@ class FhirTerminologyGeneratorPanel {
 		}
 	}
 
+	// Update the Webview content.
 	private _update() {
 
 		// The Webview instance.
@@ -217,58 +222,75 @@ class FhirTerminologyGeneratorPanel {
 		this._panel.webview.html = this._getHtmlForWebview(webview);
 	}
 
-	// Fill the CodeSystem template with the input data.
-	private _fillCodeSystemTemplate(content: string) {
+	// Fill a template with input data.
+	private _fillTemplate(instanceType: string, content: string) {
 
 		// Load the common template from disk.
-		const commonTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'common.mustache');
+		const commonTemplatePath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/template`, 'common.mustache');
 		const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
 
-		// Load the CodeSystem template from disk.
-		const codeSystemTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'CodeSystem.mustache');
-		const codeSystemTemplate = fs.readFileSync(codeSystemTemplatePath.fsPath, { encoding: 'utf8' });
+		// Load the instance type template from disk.
+		const instanceTypeTemplatePath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/template`, `${instanceType}.mustache`);
+		const instanceTypeTemplate = fs.readFileSync(instanceTypeTemplatePath.fsPath, { encoding: 'utf8' });
 
 		// Fill the template with the input data.
-		const filledTemplate = Mustache.render(codeSystemTemplate, JSON.parse(content), { common: commonTemplate });
+		const filledTemplate
+			= Mustache.render(instanceTypeTemplate, JSON.parse(content), { common: commonTemplate });
 
 		return filledTemplate;
 	}
 
-	// Fill the ValueSet template with the input data.
-	private _fillValueSetTemplate(content: string) {
+	// Validate the filled template against the FHIR® JSON schema.
+	private _validateFilledTemplate(filledTemplate: string) {
 
-		// Load the common template from disk.
-		const commonTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'common.mustache');
-		const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
+		// Local path to the FHIR® JSON schema.
+		const fhirJsonSchemaPath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/schema`, 'fhir.schema.json');
+		// Read the FHIR® JSON schema from disk.
+		const fhirJsonSchema = fs.readFileSync(fhirJsonSchemaPath.fsPath, { encoding: 'utf8' });
 
-		// Load the ValueSet template from disk.
-		const valueSetTemplatePath = vscode.Uri.joinPath(this._extensionUri, 'media', 'ValueSet.mustache');
-		const valueSetTemplate = fs.readFileSync(valueSetTemplatePath.fsPath, { encoding: 'utf8' });
+		// Validate the filled template using the JSON schema.
+		// The use of 'strict: false' is suggested in:
+		// https://json-schema.org/implementations#validator-javascript.
+		const ajv = new Ajv( { strict: false });
+		const validate = ajv.compile(JSON.parse(fhirJsonSchema));
+		const valid = validate(JSON.parse(filledTemplate));
 
-		// Fill the template with the input data.
-		const filledTemplate = Mustache.render(valueSetTemplate, JSON.parse(content), { common: commonTemplate });
-
-		return filledTemplate;
+		// Return the validation status and the validation errors (if any).
+		return {
+			valid,
+			errors: validate.errors
+		};
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview) {
+
 		// Local path to main script run in the Webview.
-		const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'media', 'script.js');
+		const scriptPathOnDisk
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/script`, 'script.js');
 		// And the URI we use to load this script in the Webview.
 		const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
+
 		// Local path to CSS styles.
-		const styleResetPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css');
-		const stylesPathMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css');
-		const stylesCustomPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'custom.css');
+		const styleResetPath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'reset.css');
+		const stylesPathMainPath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'vscode.css');
+		const stylesCustomPath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'custom.css');
 		// URI to load styles into the Webview.
 		const stylesResetUri = webview.asWebviewUri(styleResetPath);
 		const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
 		const stylesCustomUri = webview.asWebviewUri(stylesCustomPath);
+
 		// Use a nonce to only allow specific scripts to be run.
 		const nonce = getNonce();
 
 		// Load the HTML content from disk.
-		const htmlPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'input.html');
+		const htmlPath
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/content`, 'input.html');
 		let html = fs.readFileSync(htmlPath.fsPath, { encoding: 'utf8' });
 
 		// Replace the placeholders with paths and values.
@@ -281,6 +303,17 @@ class FhirTerminologyGeneratorPanel {
 
 		return html;
 	}
+}
+
+// Return the Webview options.
+function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
+
+	return {
+		// Enable javascript in the Webview.
+		enableScripts: true,
+		// Restrict the Webview to only loading content from the extension's `resource` directory.
+		localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'resource')]
+	};
 }
 
 // The nonce generator.

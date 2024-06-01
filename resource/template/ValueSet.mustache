@@ -1,0 +1,15 @@
+{
+    "resourceType": "ValueSet",
+{{> common}}
+{{#immutable}}
+    "immutable": {{{immutable}}},
+{{/immutable}}
+    "compose": {
+        "include": [{
+        {{#system}}
+            "system": "{{system}}",
+        {{/system}}
+            "concept": {{{concepts}}}
+        }]
+    }
+}
