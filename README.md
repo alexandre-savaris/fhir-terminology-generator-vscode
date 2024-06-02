@@ -10,7 +10,12 @@ It's minimalistic because:
 FHIR Specification = v5.0.0: R5 - STU
 
 ## Usage
-![Extension usage](resource/image/extension.gif)
+1. Open up a CSV file with 2 columns - the first one with codes and the second one with texts related to the codes;
+2. Open up the extension by using the Command Palette ("View/Command Palette..." or Ctrl+Shift+P) by selecting the option "Start a new FHIR® Terminology Generator session";
+3. Fill in the values for the terminology instance;
+4. Generate the terminology instance by clicking the "Generate" button.
+
+![Extension usage](resource/image/extension_usage.gif)
 
 ## Notes
 The file [fhir.schema.json](resource/schema/fhir.schema.json) (FHIR® JSON Schema) was modified to be used in the validation, as follows:
