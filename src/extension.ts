@@ -87,7 +87,7 @@ class FhirTerminologyGeneratorPanel {
 	// Concepts extracted from the orginal CSV file.
 	private readonly _concepts: string;
 	// Base path for resources.
-	private readonly _resourceBasePath: string = 'resource';
+	private readonly _resourceBasePath: string = 'resources';
 
 	// Create the panel or show the current one (if it already exists).
 	public static createOrShow(extensionUri: vscode.Uri, concepts: string = '') {
@@ -227,12 +227,12 @@ class FhirTerminologyGeneratorPanel {
 
 		// Load the common template from disk.
 		const commonTemplatePath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/template`, 'common.mustache');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/templates`, 'common.mustache');
 		const commonTemplate = fs.readFileSync(commonTemplatePath.fsPath, { encoding: 'utf8' });
 
 		// Load the instance type template from disk.
 		const instanceTypeTemplatePath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/template`, `${instanceType}.mustache`);
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/templates`, `${instanceType}.mustache`);
 		const instanceTypeTemplate = fs.readFileSync(instanceTypeTemplatePath.fsPath, { encoding: 'utf8' });
 
 		// Fill the template with the input data.
@@ -247,7 +247,7 @@ class FhirTerminologyGeneratorPanel {
 
 		// Local path to the FHIR® JSON schema.
 		const fhirJsonSchemaPath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/schema`, 'fhir.schema.json');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/schemas`, 'fhir.schema.json');
 		// Read the FHIR® JSON schema from disk.
 		const fhirJsonSchema = fs.readFileSync(fhirJsonSchemaPath.fsPath, { encoding: 'utf8' });
 
@@ -269,17 +269,17 @@ class FhirTerminologyGeneratorPanel {
 
 		// Local path to main script run in the Webview.
 		const scriptPathOnDisk
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/script`, 'script.js');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/scripts`, 'script.js');
 		// And the URI we use to load this script in the Webview.
 		const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
 
 		// Local path to CSS styles.
 		const styleResetPath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'reset.css');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/styles`, 'reset.css');
 		const stylesPathMainPath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'vscode.css');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/styles`, 'vscode.css');
 		const stylesCustomPath
-			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/style`, 'custom.css');
+			= vscode.Uri.joinPath(this._extensionUri, `${this._resourceBasePath}/styles`, 'custom.css');
 		// URI to load styles into the Webview.
 		const stylesResetUri = webview.asWebviewUri(styleResetPath);
 		const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
@@ -312,7 +312,7 @@ function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
 		// Enable javascript in the Webview.
 		enableScripts: true,
 		// Restrict the Webview to only loading content from the extension's `resource` directory.
-		localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'resource')]
+		localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'resources')]
 	};
 }
 

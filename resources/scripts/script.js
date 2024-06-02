@@ -281,7 +281,7 @@ function setCurrentState(vscode, inputData, generateButtonWasClicked = true) {
 	}
 	
 	// Count the number of concepts.
-	inputData['counts'] = JSON.parse(inputData.concepts).length;
+	inputData['count'] = JSON.parse(inputData.concepts).length;
 	
 	// Persist the input data as the current state.
 	vscode.setState(inputData);

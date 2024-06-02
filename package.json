@@ -1,8 +1,8 @@
 {
   "name": "fhir-terminology-generator-vscode",
   "displayName": "fhir-terminology-generator-vscode",
-  "description": "A minimalistic VSCode extension to generate FHIR® terminology-related structures.",
-  "version": "0.0.1",
+  "description": "A minimalistic VS Code extension to generate FHIR® terminology-related structures.",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.89.0"
   },
