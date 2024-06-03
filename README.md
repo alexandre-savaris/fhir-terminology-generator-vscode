@@ -15,10 +15,10 @@ FHIR Specification = v5.0.0: R5 - STU
 3. Fill in the values for the terminology instance;
 4. Generate the terminology instance by clicking the "Generate" button.
 
-![Extension usage](resource/image/extension_usage.gif)
+![Extension usage](resources/images/extension_usage.gif)
 
 ## Notes
-The file [fhir.schema.json](resource/schema/fhir.schema.json) (FHIR® JSON Schema) was modified to be used in the validation, as follows:
+The file [fhir.schema.json](resources/schemas/fhir.schema.json) (FHIR® JSON Schema) was modified to be used in the validation, as follows:
 1. As recommended in https://ajv.js.org/guide/schema-language.html, the key $schema was removed;
 2. "{1,9}}" was replaced by "{1,9}" due to syntax issues.
 
