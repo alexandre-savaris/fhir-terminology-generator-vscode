@@ -9,6 +9,8 @@ import * as fs from 'fs';
 import Mustache from 'mustache';
 // For validating JSON content using schemas.
 import Ajv from 'ajv';
+// For generating FSH.
+import { gofshClient } from 'gofsh';
 
 // This method is called when your extension is activated.
 // Your extension is activated the very first time the command is executed.
@@ -175,6 +177,7 @@ class FhirTerminologyGeneratorPanel {
 										+ filledTemplate);
 							}
 						} else {
+
 							// Create a new document with the terminology's instance content.
 							vscode.workspace.openTextDocument({
 								content: filledTemplate,
@@ -182,6 +185,22 @@ class FhirTerminologyGeneratorPanel {
 							}).then(newDocument => {
 								vscode.window.showTextDocument(newDocument);
 							});
+
+							// Create a new document with the FSH content.
+							gofshClient
+								.fhirToFsh([filledTemplate], {
+									style: "string",
+									logLevel: "error",
+								}).then((results) => {
+									vscode.workspace.openTextDocument({
+										content: results.fsh as string,
+									}).then(newDocument => {
+										vscode.window.showTextDocument(newDocument);
+									});
+								}).catch((err) => {
+								vscode.window.showErrorMessage(err.message);
+								vscode.window.withProgress
+								});
 						}
 						return;
 					// There were errors in matching input values with expected patterns.
@@ -327,3 +346,39 @@ function getNonce() {
 
 	return text;
 }
+
+
+// To evaluate.
+// import * as vscode from 'vscode';
+
+// export function activate(context: vscode.ExtensionContext) {
+//     let disposable = vscode.commands.registerCommand('myExtension.doSomethingLong', async () => {
+//         await vscode.window.withProgress({
+//             location: vscode.ProgressLocation.Notification, // or vscode.ProgressLocation.Window
+//             title: "Performing a long operation...",
+//             cancellable: true // Allows the user to cancel the operation
+//         }, async (progress, token) => {
+//             token.onCancellationRequested(() => {
+//                 console.log("User canceled the long-running operation.");
+//                 vscode.window.showInformationMessage("Operation canceled by user.");
+//             });
+
+//             const totalSteps = 10;
+//             for (let i = 0; i < totalSteps; i++) {
+//                 if (token.isCancellationRequested) {
+//                     return; // Exit if canceled
+//                 }
+
+//                 // Report progress
+//                 progress.report({ increment: 100 / totalSteps, message: `Step ${i + 1} of ${totalSteps}` });
+
+//                 // Simulate a long-running task
+//                 await new Promise(resolve => setTimeout(resolve, 1000));
+//             }
+
+//             vscode.window.showInformationMessage("Long operation completed!");
+//         });
+//     });
+
+//     context.subscriptions.push(disposable);
+// }
