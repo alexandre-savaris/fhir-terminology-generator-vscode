@@ -3,7 +3,7 @@
   "displayName": "FHIR® Terminology Generator - R5",
   "description": "A minimalistic VS Code extension to generate FHIR® terminology-related structures.",
   "publisher": "alexandresavaris",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "license": "SEE LICENSE IN LICENSE.txt",
   "homepage": "https://github.com/alexandre-savaris/fhir-terminology-generator-vscode/blob/main/README.md",
   "bugs": {
@@ -16,7 +16,7 @@
   },
   "icon": "./resources/images/extension_icon_128_128.png",
   "engines": {
-    "vscode": "^1.89.0"
+    "vscode": "^1.104.0"
   },
   "categories": [
     "Formatters",
