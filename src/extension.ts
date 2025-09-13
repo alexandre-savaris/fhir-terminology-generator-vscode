@@ -346,39 +346,3 @@ function getNonce() {
 
 	return text;
 }
-
-
-// To evaluate.
-// import * as vscode from 'vscode';
-
-// export function activate(context: vscode.ExtensionContext) {
-//     let disposable = vscode.commands.registerCommand('myExtension.doSomethingLong', async () => {
-//         await vscode.window.withProgress({
-//             location: vscode.ProgressLocation.Notification, // or vscode.ProgressLocation.Window
-//             title: "Performing a long operation...",
-//             cancellable: true // Allows the user to cancel the operation
-//         }, async (progress, token) => {
-//             token.onCancellationRequested(() => {
-//                 console.log("User canceled the long-running operation.");
-//                 vscode.window.showInformationMessage("Operation canceled by user.");
-//             });
-
-//             const totalSteps = 10;
-//             for (let i = 0; i < totalSteps; i++) {
-//                 if (token.isCancellationRequested) {
-//                     return; // Exit if canceled
-//                 }
-
-//                 // Report progress
-//                 progress.report({ increment: 100 / totalSteps, message: `Step ${i + 1} of ${totalSteps}` });
-
-//                 // Simulate a long-running task
-//                 await new Promise(resolve => setTimeout(resolve, 1000));
-//             }
-
-//             vscode.window.showInformationMessage("Long operation completed!");
-//         });
-//     });
-
-//     context.subscriptions.push(disposable);
-// }
