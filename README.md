@@ -27,6 +27,10 @@ The state (i.e. the values filled in the extension fields) are saved internally 
 
 ## Release Notes
 
+### 1.1.1
+
+- Adjustments for deploy.
+
 ### 1.1.0
 
 - Added generation of FSH content.
